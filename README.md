@@ -1,4 +1,4 @@
-# dealzy_loop
+# seller_loop
 
 A new Flutter project.
 
