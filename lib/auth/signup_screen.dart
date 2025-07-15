@@ -242,7 +242,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  const TextField(
+                   TextField(
+                     controller: passwordController,
                     obscureText: true,
                     style: TextStyle(fontSize: 14),
                     decoration: InputDecoration(
@@ -264,7 +265,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  const TextField(
+                   TextField(
+                    controller: confirmPasswordController,
                     obscureText: true,
                     style: TextStyle(fontSize: 14),
                     decoration: InputDecoration(

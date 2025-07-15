@@ -208,22 +208,31 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                 const SizedBox(height: 20),
 
                 // Upload button
-                ElevatedButton(
-                  // ✅ REPLACE WITH:
-                  onPressed: () {
-                    controller.submitProduct();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue[900],
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                Obx(() {
+                  return ElevatedButton(
+                    onPressed: controller.isLoading.value ? null : () => controller.submitProduct(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blue[900],
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
-                  ),
-                  child: const Text(
-                    'Upload',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
+                    child: controller.isLoading.value
+                        ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                        : const Text(
+                      'Upload',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  );
+                }),
+
               ],
             ),
           ),

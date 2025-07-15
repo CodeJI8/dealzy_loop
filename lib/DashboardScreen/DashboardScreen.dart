@@ -1,82 +1,75 @@
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
+import '../createPost/AddOfferScreen.dart';
+import '../createPost/CreatePostScreen.dart';
+import '../profile/ProfileScreen.dart';
+import '../service/seller_auth_service.dart';
+import '../storage/token_storage.dart';
+import 'dashboard_controller.dart';
 
-  import 'package:flutter/material.dart';
-  import 'package:get/get.dart';
+class DashboardScreen extends StatefulWidget {
+  DashboardScreen({super.key});
 
-  import '../createPost/AddOfferScreen.dart';
-  import '../createPost/CreatePostScreen.dart';
-  import '../profile/ProfileScreen.dart';
-  import '../service/seller_auth_service.dart';
-  import '../storage/token_storage.dart';
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
 
+class _DashboardScreenState extends State<DashboardScreen> {
+  final DashboardController dashboardController = Get.put(DashboardController());
+  final SellerAuthService _authService = SellerAuthService();
+  List<dynamic> _deals = [];
 
-  class DashboardScreen extends StatefulWidget {
-
-
-     DashboardScreen({super.key});
-
-    @override
-    State<DashboardScreen> createState() => _DashboardScreenState();
+  @override
+  void initState() {
+    super.initState();
+    dashboardController.loadPostedProducts();
+    _loadDeals();
   }
 
-  class _DashboardScreenState extends State<DashboardScreen> {
-    final SellerAuthService _authService = SellerAuthService();
-    List<dynamic> _deals = [];
+  Future<void> _loadDeals() async {
+    final token = await TokenStorage.getToken();
 
-    @override
-    void initState() {
-      super.initState();
-      _loadDeals();
+    if (token == null) {
+      Get.snackbar("Login Required", "Please login first");
+      return;
     }
 
-    Future<void> _loadDeals() async {
-      final token = await TokenStorage.getToken();
-
-      if (token == null) {
-        Get.snackbar("Login Required", "Please login first");
-        return;
-      }
-
-      try {
-        final deals = await _authService.getCurrentDeals(token, page: 1, limit: 5);
-        setState(() {
-          _deals = deals;
-        });
-      } catch (e) {
-        print("Error loading deals: $e");
-        Get.snackbar("Error", e.toString());
-      }
+    try {
+      final deals = await _authService.getCurrentDeals(token, page: 1, limit: 5);
+      setState(() {
+        _deals = deals;
+      });
+    } catch (e) {
+      print("Error loading deals: $e");
+      Get.snackbar("Error", e.toString());
     }
+  }
 
-
-
-    //Widget starts from here
-
-
-    @override
-    Widget build(BuildContext context) {
-
-
-
-      return Scaffold(
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
         backgroundColor: Colors.white,
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          leadingWidth: 10,
-          title: Row(
-            children: const [
-
-              SizedBox(width: 10),
-              Text('9:41', style: TextStyle(color: Colors.black))
-            ],
-          ),
+        elevation: 0,
+        leadingWidth: 10,
+        title: Row(
+          children: const [
+            SizedBox(width: 10),
+            Text('9:41', style: TextStyle(color: Colors.black)),
+          ],
         ),
-        body: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+      ),
+      body: RefreshIndicator(
+        onRefresh: _loadDeals,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Top 3 buttons
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -84,17 +77,28 @@
                     Icons.add_circle_outline,
                     'CreatePost',
                     Colors.deepOrange,
-                    onTap: () => Get.to(() =>  CreatePostScreen()),
+                    onTap: () => Get.to(() => CreatePostScreen()),
                   ),
-
-                  _dashboardIconButton(Icons.local_offer_outlined, 'add offer', Colors.lightBlue, onTap: () => Get.to(() => const AddOfferScreen())),
-                  _dashboardIconButton(Icons.person_outline, 'profile', Colors.lightGreen, onTap: () => Get.to(() => const ProfileScreen())),
+                  _dashboardIconButton(
+                    Icons.local_offer_outlined,
+                    'add offer',
+                    Colors.lightBlue,
+                    onTap: () => Get.to(() => const AddOfferScreen()),
+                  ),
+                  _dashboardIconButton(
+                    Icons.person_outline,
+                    'profile',
+                    Colors.lightGreen,
+                    onTap: () => Get.to(() => const ProfileScreen()),
+                  ),
                 ],
               ),
               const SizedBox(height: 20),
-              const Text('Current Deal', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 10),
 
+              // Current Deal section
+              const Text('Current Deal',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 10),
               _deals.isEmpty
                   ? const Text("No current deals available.")
                   : Column(
@@ -110,78 +114,110 @@
                 child: Text('View all ▼', style: TextStyle(color: Colors.black)),
               ),
               const SizedBox(height: 20),
-              const Text('Products List', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+
+              // Product List section
+              const Text('Products List',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               const SizedBox(height: 10),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: 6,
-                  itemBuilder: (_, index) => _productCard(),
-                ),
-              ),
+
+              // Make this scrollable inside SingleChildScrollView by limiting height
+              const SizedBox(height: 10),
+              Obx(() {
+                if (dashboardController.postedProducts.isEmpty && !dashboardController.isLoading.value) {
+                  return const Text('No products posted yet.');
+                }
+
+                return Column(
+                  children: [
+                    ...dashboardController.postedProducts.map((product) => _productCard(product)),
+                    if (dashboardController.isLoading.value)
+                      const Padding(
+                        padding: EdgeInsets.all(16),
+                        child: CircularProgressIndicator(),
+                      )
+                  ],
+                );
+              }),
+
             ],
           ),
         ),
-      );
-    }
-
-    Widget _dashboardIconButton(IconData icon, String label, Color color, {VoidCallback? onTap}) {
-      return GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: 100,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: Colors.black),
-              const SizedBox(height: 4),
-              Text(label, style: const TextStyle(color: Colors.black)),
-            ],
-          ),
-        ),
-      );
-    }
-
-    Widget _dealCard(dynamic deal) {
-      return ListTile(
-        contentPadding: EdgeInsets.zero,
-        leading: Image.asset('assets/watch1.png', width: 40, height: 40), // Replace with `deal['image']` if dynamic
-        title: Text(deal['title'] ?? 'No title', style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text('Exp ${deal['expiry_date'] ?? ''}'),
-        trailing: Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text('\$${deal['old_price'] ?? ''}', style: const TextStyle(decoration: TextDecoration.lineThrough, color: Colors.grey)),
-            Text('\$${deal['new_price'] ?? ''}', style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-            const Icon(Icons.close, size: 18, color: Colors.black),
-          ],
-        ),
-      );
-    }
-
-    Widget _productCard() {
-      return ListTile(
-        contentPadding: EdgeInsets.zero,
-        leading: Image.asset('assets/watch1.png', width: 40, height: 40),
-        title: const Text('Fossil Neutra Chronograph Ocean'),
-        subtitle: const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text('\$34  ', style: TextStyle(fontWeight: FontWeight.bold)),
-                Icon(Icons.star, color: Colors.orange, size: 16),
-                Text(' 4.5 Rating')
-              ],
-            ),
-            Text('May 10, 2025 at 9:00 AM'),
-          ],
-        ),
-      );
-    }
+      ),
+    );
   }
+
+  Widget _dashboardIconButton(IconData icon, String label, Color color,
+      {VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 100,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: Colors.black),
+            const SizedBox(height: 4),
+            Text(label, style: const TextStyle(color: Colors.black)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _dealCard(dynamic deal) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Image.network(
+        deal['product_image'] ?? '',
+        width: 40,
+        height: 40,
+        errorBuilder: (_, __, ___) => Image.asset('assets/watch1.png', width: 40, height: 40),
+      ),
+      title: Text(
+        deal['product_name'] ?? 'No name',
+        style: const TextStyle(fontWeight: FontWeight.bold),
+      ),
+      subtitle: Text('Exp ${deal['expiry_date'] ?? ''}'),
+      trailing: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            '\৳${deal['price'] ?? ''}',
+            style: const TextStyle(
+              decoration: TextDecoration.lineThrough,
+              color: Colors.grey,
+            ),
+          ),
+          Text(
+            '\৳${deal['discount_price'] ?? ''}',
+            style: const TextStyle(
+              color: Colors.red,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _productCard(dynamic product) {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Image.network(
+        product['product_image'] ?? '',
+        width: 40,
+        height: 40,
+        errorBuilder: (_, __, ___) => Image.asset('assets/watch1.png'),
+      ),
+      title: Text(product['product_name'] ?? 'Unnamed'),
+      subtitle: Text('৳${product['price'] ?? '0'}'),
+    );
+  }
+
+}

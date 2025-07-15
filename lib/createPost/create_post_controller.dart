@@ -26,6 +26,7 @@ class CreatePostController extends GetxController {
   final stockController = ''.obs;
   final colorController = ''.obs;
   final variantController = ''.obs;
+  var isLoading = false.obs;
 
   @override
   void onInit() {
@@ -67,9 +68,13 @@ class CreatePostController extends GetxController {
   }
 
   Future<void> submitProduct() async {
+    if (isLoading.value) return;
+    isLoading.value = true;
+
     final token = await TokenStorage.getToken();
     if (token == null) {
       Get.snackbar("Error", "Please login first");
+      isLoading.value = false;
       return;
     }
 
@@ -99,6 +104,9 @@ class CreatePostController extends GetxController {
     } catch (e) {
       print('❌ Error submitting product: $e');
       Get.snackbar("Upload Failed", e.toString());
+    } finally {
+      isLoading.value = false;
     }
   }
+
 }
