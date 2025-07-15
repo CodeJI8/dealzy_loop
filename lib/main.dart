@@ -1,5 +1,4 @@
 import 'package:seller_loop/createPost/CreatePostScreen.dart';
-import 'package:seller_loop/notifications/notification_view.dart';
 import 'package:seller_loop/profile/ProfileScreen.dart';
 import 'package:seller_loop/routes/app_routes.dart';
 import 'package:flutter/material.dart';
@@ -37,7 +36,6 @@ class MyApp extends StatelessWidget {
             GetPage(name: AppRoutes.signIn, page: () => SignInScreen()),
             GetPage(name: AppRoutes.signup, page: () =>  SignUpScreen()),
             GetPage(name: AppRoutes.profile, page: () =>  ProfileScreen()),
-            GetPage(name: AppRoutes.notification, page: () =>  NotificationView()),
             GetPage(name: AppRoutes.createPost, page: () =>  CreatePostScreen()),
 
 

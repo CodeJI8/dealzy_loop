@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../viewProduct/ProductViewPage.dart';
-import 'OfferTypeDialog.dart';
+import 'dialogs/OfferTypeDialog.dart';
 
 class AddOfferScreen extends StatelessWidget {
   const AddOfferScreen({super.key});

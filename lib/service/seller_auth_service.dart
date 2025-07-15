@@ -2,6 +2,9 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
+import 'package:seller_loop/service/models/post_product_request.dart';
+
+import 'models/post_product_response.dart';
 
 class SellerAuthService {
   final String baseUrl = 'https://dealzyloop.com/api';
@@ -123,6 +126,25 @@ class SellerAuthService {
       return data['data']; // Adjust key if needed
     } else {
       throw Exception(data['message'] ?? 'Failed to fetch deals');
+    }
+  }
+
+
+
+  Future<PostProductResponse> postProduct({
+    required String token,
+    required PostProductRequest requestModel,
+  }) async {
+    final request = await requestModel.toMultipartRequest('$baseUrl/post_products.php', token);
+    final streamedResponse = await request.send();
+    final response = await http.Response.fromStream(streamedResponse);
+
+    print('📦 postProduct response: ${response.body}');
+
+    if (response.statusCode == 200) {
+      return PostProductResponse.fromJson(jsonDecode(response.body));
+    } else {
+      throw Exception("Failed to post product: ${response.statusCode}");
     }
   }
 
