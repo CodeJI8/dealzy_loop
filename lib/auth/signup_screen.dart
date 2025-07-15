@@ -418,13 +418,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
         const SizedBox(height: 12),
 
         // Phone number
-         TextField(
+        TextField(
           controller: phoneController,
-          style: TextStyle(fontSize: 14),
-          decoration: InputDecoration(
-            labelText: 'Otp Field',
-            labelStyle: TextStyle(fontSize: 14),
+          style: const TextStyle(fontSize: 14),
+          decoration: const InputDecoration(
             contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            labelText: 'Enter your phone number',
+            labelStyle: TextStyle(fontSize: 14),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.all(Radius.circular(20)),
             ),
@@ -438,6 +438,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
             ),
           ),
         ),
+
         const SizedBox(height: 12),
 
         // Store name
