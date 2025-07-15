@@ -2,13 +2,53 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../DashboardScreen/DashboardScreen.dart';
+import '../service/seller_auth_service.dart';
+import '../storage/token_storage.dart';
 // Replace with your actual dashboard screen
 
-class SignInScreen extends StatelessWidget {
+class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
 
   @override
+  State<SignInScreen> createState() => _SignInScreenState();
+}
+
+class _SignInScreenState extends State<SignInScreen> {
+
+  @override
+  void initState() {
+    super.initState();
+    checkTokenAndNavigate();
+  }
+
+  void checkTokenAndNavigate() async {
+    try {
+      final token = await TokenStorage.getToken();
+      print('TOKEN FROM STORAGE: $token');
+
+      if (token != null && token.isNotEmpty) {
+        print('Navigating to DashboardScreen...');
+        Get.off(() => DashboardScreen());
+      } else {
+        print('No token found.');
+      }
+    } catch (e, stacktrace) {
+      print('❌ Exception while accessing SharedPreferences: $e');
+      print('📄 Stacktrace:\n$stacktrace');
+    }
+  }
+
+
+  @override
   Widget build(BuildContext context) {
+    print('🔥 SignInScreen build method called');
+
+
+    final phoneController = TextEditingController();
+    final passwordController = TextEditingController();
+
+
+
     final screenWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
@@ -43,7 +83,8 @@ class SignInScreen extends StatelessWidget {
                         const SizedBox(height: 20),
 
                         // Phone number
-                        const TextField(
+                         TextField(
+                           controller: phoneController,
                           style: TextStyle(fontSize: 14),
                           decoration: InputDecoration(
                             labelText: 'Enter your phone number',
@@ -65,7 +106,8 @@ class SignInScreen extends StatelessWidget {
                         const SizedBox(height: 12),
 
                         // Password
-                        const TextField(
+                         TextField(
+                           controller: passwordController,
                           obscureText: true,
                           style: TextStyle(fontSize: 14),
                           decoration: InputDecoration(
@@ -108,9 +150,40 @@ class SignInScreen extends StatelessWidget {
                         // Confirm button
                         Center(
                           child: ElevatedButton(
-                            onPressed: () {
-                              Get.to(() => const DashboardScreen());
-                            },
+                              onPressed: () async {
+                                final phone = phoneController.text.trim();
+                                final password = passwordController.text;
+
+                                if (phone.isEmpty || password.isEmpty) {
+                                  Get.snackbar('Missing Fields', 'Please enter both phone and password');
+                                  return;
+                                }
+
+                                try {
+                                  final authService = SellerAuthService();
+                                  final response = await authService.loginSeller(
+                                    phone: phone,
+                                    password: password,
+                                  );
+
+                                  if (response['status'] == 'success') {
+                                    final user = response['user'];
+                                    final token = user['token'];
+                                    final name = user['name'];
+
+                                    await TokenStorage.saveToken(token); // ✅ Save token
+
+                                    Get.snackbar('Success', 'Welcome back, $name!');
+                                    Get.off(() =>  DashboardScreen());
+                                  } else {
+                                    Get.snackbar('Login Failed', response['message'] ?? 'Something went wrong');
+                                  }
+                                } catch (e) {
+                                  Get.snackbar('Error', e.toString());
+                                }
+                              },
+
+
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF0C3D78),
                               foregroundColor: Colors.white,

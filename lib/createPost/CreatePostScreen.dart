@@ -1,10 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../service/seller_auth_service.dart';
+import '../storage/token_storage.dart';
 import 'AddOfferScreen.dart';
 
 class CreatePostScreen  extends StatelessWidget {
-  const CreatePostScreen({super.key});
+   CreatePostScreen({super.key});
+  final SellerAuthService _authService = SellerAuthService();
+
+  Future<void> _loadCategories() async {
+    final token = await TokenStorage.getToken(); // You can also pass token manually
+    if (token == null) {
+      Get.snackbar("Login Required", "Please login first");
+      return;
+    }
+
+    try {
+      final categories = await _authService.getAllCategories(token);
+      print(categories); // Use this to display categories in your UI
+    } catch (e) {
+      print("Error loading categories: $e");
+      Get.snackbar("Error", e.toString());
+    }
+  }
+
+
 
   // Reusable method for consistent InputDecoration
   InputDecoration buildInputDecoration(String label, {String? suffixText}) {

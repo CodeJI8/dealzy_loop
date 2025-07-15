@@ -1,17 +1,39 @@
+import 'dart:io';
+
+import 'package:image_picker/image_picker.dart';
 import 'package:seller_loop/auth/signin_screen.dart';
-import 'package:seller_loop/createPost/CreatePostScreen.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
 
+import '../service/seller_auth_service.dart';
+
 class SignUpScreen extends StatefulWidget {
+
+
   const SignUpScreen({super.key});
+
+
+
 
   @override
   State<SignUpScreen> createState() => _SignUpScreenState();
 }
 
 class _SignUpScreenState extends State<SignUpScreen> {
+  final phoneController = TextEditingController();
+  final passwordController = TextEditingController();
+  final confirmPasswordController = TextEditingController();
+  final usernameController = TextEditingController();
+  final storeNameController = TextEditingController();
+  final storeAddressController = TextEditingController();
+  String selectedStoreType = 'Retail';
+  String profileImagePath = ''; // Set this via I
+
+  final SellerAuthService _authService = SellerAuthService();
+// magePicker
+
+
   int stepIndex = 0;
 
   void nextStep() {
@@ -335,15 +357,28 @@ class _SignUpScreenState extends State<SignUpScreen> {
             CircleAvatar(
               radius: 40,
               backgroundColor: Colors.grey[300],
-              child: Icon(Icons.person, size: 40, color: Colors.grey[600]),
+              backgroundImage: profileImagePath.isNotEmpty
+                  ? FileImage(File(profileImagePath))
+                  : null,
+              child: profileImagePath.isEmpty
+                  ? Icon(Icons.person, size: 40, color: Colors.grey[600])
+                  : null,
             ),
+
             Positioned(
               bottom: 0,
               right: 4,
               child: InkWell(
-                onTap: () {
-                  // TODO: open image picker
+                onTap: () async {
+                  final picker = ImagePicker();
+                  final picked = await picker.pickImage(source: ImageSource.gallery);
+                  if (picked != null) {
+                    setState(() {
+                      profileImagePath = picked.path;
+                    });
+                  }
                 },
+
                 child: Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
@@ -360,9 +395,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
         const SizedBox(height: 20),
 
         // Username
-        const TextField(
-          style: TextStyle(fontSize: 14),
-          decoration: InputDecoration(
+        TextField(
+          controller: usernameController,
+          style: const TextStyle(fontSize: 14),
+          decoration: const InputDecoration(
             labelText: 'Username',
             labelStyle: TextStyle(fontSize: 14),
             contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -382,10 +418,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
         const SizedBox(height: 12),
 
         // Phone number
-        const TextField(
+         TextField(
+          controller: phoneController,
           style: TextStyle(fontSize: 14),
           decoration: InputDecoration(
-            labelText: 'Phone number',
+            labelText: 'Otp Field',
             labelStyle: TextStyle(fontSize: 14),
             contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             border: OutlineInputBorder(
@@ -404,7 +441,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
         const SizedBox(height: 12),
 
         // Store name
-        const TextField(
+         TextField(
+           controller: storeNameController,
           style: TextStyle(fontSize: 14),
           decoration: InputDecoration(
             labelText: 'Store name',
@@ -426,7 +464,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
         const SizedBox(height: 12),
 
         // Store address
-        const TextField(
+         TextField(
+           controller: storeAddressController,
           style: TextStyle(fontSize: 14),
           decoration: InputDecoration(
             labelText: 'Store address',
@@ -449,6 +488,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
         // Store type dropdown
         DropdownButtonFormField<String>(
+          value: selectedStoreType,
           decoration: const InputDecoration(
             labelText: 'Store type',
             labelStyle: TextStyle(fontSize: 14),
@@ -466,19 +506,54 @@ class _SignUpScreenState extends State<SignUpScreen> {
             ),
           ),
           items: ['Retail', 'Wholesale', 'Service']
-              .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+              .map((e) => DropdownMenuItem<String>(
+            value: e,
+            child: Text(e),
+          ))
               .toList(),
-          onChanged: (_) {},
+          onChanged: (value) {
+            if (value != null) {
+              setState(() {
+                selectedStoreType = value;
+              });
+            }
+          },
         ),
+
 
         const SizedBox(height: 24),
 
         // Confirm Button
         Center(
           child: ElevatedButton(
-            onPressed: () {
-              Get.to(() => SignInScreen()); // Replace SignInScreen with your actual widget
+            onPressed: () async {
+              if (profileImagePath.isEmpty) {
+                Get.snackbar('Error', 'Please select a profile image');
+                return;
+              }
+
+              try {
+                final response = await _authService.registerSeller(
+                  name: usernameController.text.trim(),
+                  phone: phoneController.text.trim(),
+                  password: passwordController.text,
+                  storeName: storeNameController.text.trim(),
+                  storeType: selectedStoreType,
+                  address: storeAddressController.text.trim(),
+                  imagePath: profileImagePath,
+                );
+
+                if (response['status'] == 'success') {
+                  Get.snackbar('Success', 'Registration successful');
+                  Get.off(() => const SignInScreen());
+                } else {
+                  Get.snackbar('Failed', response['message'] ?? 'Unknown error');
+                }
+              } catch (e) {
+                Get.snackbar('Error', e.toString());
+              }
             },
+
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF0C3D78),
               foregroundColor: Colors.white,
