@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'DiscountDialog.dart';
+import '../createPost/DiscountDialog.dart';
 
 class OfferTypeDialog extends StatelessWidget {
   final void Function(String) onSelected;

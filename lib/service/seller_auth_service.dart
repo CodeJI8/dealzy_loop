@@ -82,8 +82,14 @@ class SellerAuthService {
       },
     );
 
+
+    final data = json.decode(response.body);
+
+    // 👇 Print full raw response
+    print(' categories response: ${response.body}');
+
     if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
+
       if (data['status'] == 'success') {
         return data['categories']; // Adjust based on your API response
       } else {
