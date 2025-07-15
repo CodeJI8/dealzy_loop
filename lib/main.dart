@@ -6,7 +6,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'auth/signin_screen.dart';
 import 'auth/signup_screen.dart';
-import 'createPost/AddOfferScreen.dart';
+import 'addOffer/AddOfferScreen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

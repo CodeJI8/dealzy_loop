@@ -6,7 +6,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../service/seller_auth_service.dart';
 import '../storage/token_storage.dart';
-import 'AddOfferScreen.dart';
+import '../addOffer/AddOfferScreen.dart';
 import '../widgets/category_dropdown_item.dart';
 import 'create_post_controller.dart';
 

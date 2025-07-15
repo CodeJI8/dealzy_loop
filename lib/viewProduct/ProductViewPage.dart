@@ -2,10 +2,29 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class ProductViewPage extends StatelessWidget {
-  const ProductViewPage({super.key});
+  final Map<String, dynamic> productDetails;
+
+  const ProductViewPage({super.key, required this.productDetails});
 
   @override
   Widget build(BuildContext context) {
+    final productName = productDetails['product_name'] ?? 'Unnamed';
+    final brand = productDetails['brand'] ?? 'N/A';
+    final model = productDetails['model'] ?? 'N/A';
+    final price = productDetails['price']?.toString() ?? '0';
+    final discountPrice = productDetails['discount_price']?.toString() ?? price;
+    final description = productDetails['description'] ?? 'No description provided.';
+    final images = productDetails['images'] as List<dynamic>? ?? [];
+    final discount = productDetails['discount']?.toString() ?? '';
+    final expiry = productDetails['expiry_date'] ?? 'N/A';
+    final colors = (productDetails['colors'] as List?)?.map((e) => e['color']).join(', ') ?? 'N/A';
+    final variants = (productDetails['variants'] as List?)?.map((e) => e['variant']).join(', ') ?? 'N/A';
+
+    final storeName = productDetails['store_name'] ?? 'Unknown Store';
+    final storeType = productDetails['store_type'] ?? 'N/A';
+    final storeAddress = productDetails['address'] ?? 'N/A';
+    final storePhone = productDetails['phone'] ?? 'N/A';
+
     return Scaffold(
       backgroundColor: Colors.grey[900],
       appBar: AppBar(
@@ -27,12 +46,9 @@ class ProductViewPage extends StatelessWidget {
           child: Column(
             children: [
               SizedBox(height: 16.h),
-              Image.asset(
-                'assets/watch1.png',
-                height: 220.h,
-                fit: BoxFit.contain,
-              ),
-              // Static product image
+              images.isNotEmpty
+                  ? Image.network(images.first, height: 220.h, fit: BoxFit.contain)
+                  : Image.asset('assets/watch1.png', height: 220.h),
               SizedBox(height: 12.h),
 
               Padding(
@@ -44,7 +60,7 @@ class ProductViewPage extends StatelessWidget {
                       children: [
                         Expanded(
                           child: Text(
-                            'Fossil Neutra Chronograph',
+                            productName,
                             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.sp),
                           ),
                         ),
@@ -55,29 +71,33 @@ class ProductViewPage extends StatelessWidget {
                     SizedBox(height: 4.h),
                     Row(
                       children: [
-                        Text('\$67', style: TextStyle(fontSize: 12.sp, decoration: TextDecoration.lineThrough, color: Colors.grey)),
+                        Text('৳$price', style: TextStyle(fontSize: 12.sp, decoration: TextDecoration.lineThrough, color: Colors.grey)),
                         SizedBox(width: 8.w),
-                        Text('\$55', style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.bold, color: Colors.red)),
-                        SizedBox(width: 4.w),
-                        Text('(regular offer)', style: TextStyle(fontSize: 10.sp, color: Colors.grey)),
+                        Text('৳$discountPrice', style: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.bold, color: Colors.red)),
+                        if (discount.isNotEmpty)
+                          Padding(
+                            padding: EdgeInsets.only(left: 4.w),
+                            child: Text('($discount% off)', style: TextStyle(fontSize: 10.sp, color: Colors.grey)),
+                          ),
                       ],
                     ),
+                    SizedBox(height: 6.h),
+                    Text("Offer Expiry: $expiry", style: TextStyle(fontSize: 10.sp, color: Colors.grey[600])),
                   ],
                 ),
               ),
 
               SizedBox(height: 12.h),
-              _buildDetailText('Brand : Fossil'),
-              _buildDetailText('Model : FS5878'),
-              _buildDetailText('Color : Only Black'),
-              _buildDetailText('Size : 44mm'),
-              _buildDetailText('Category : Men\'s Watch'),
-              _buildDetailText('Availability : 1 in Stock'),
+              _buildDetailText('Brand : $brand'),
+              _buildDetailText('Model : $model'),
+              _buildDetailText('Color : $colors'),
+              _buildDetailText('Variant : $variants'),
+              _buildDetailText('Stock : ${productDetails['stock'] ?? 'N/A'}'),
 
               Padding(
                 padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 8.w),
                 child: Text(
-                  'Lorem ipsum is simply dummy text of the printing and typesetting industry. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged.',
+                  description,
                   style: TextStyle(fontSize: 12.sp, color: Colors.black),
                 ),
               ),
@@ -85,8 +105,8 @@ class ProductViewPage extends StatelessWidget {
               const Divider(),
 
               _buildSectionTitle('Shop Details'),
-              _buildDetailText('Fashion.Hube - Clothing'),
-              _buildDetailText('Jalalabad, Sylhet - +880 16 4738 723'),
+              _buildDetailText('$storeName - $storeType'),
+              _buildDetailText('$storeAddress - $storePhone'),
               _buildDetailText('Open: 10:00 AM  |  Close: 9:30 PM'),
 
               SizedBox(height: 12.h),

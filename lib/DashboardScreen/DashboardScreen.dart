@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-import '../createPost/AddOfferScreen.dart';
+import '../addOffer/AddOfferScreen.dart';
 import '../createPost/CreatePostScreen.dart';
 import '../profile/ProfileScreen.dart';
 import '../service/seller_auth_service.dart';
@@ -62,7 +62,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       ),
       body: RefreshIndicator(
-        onRefresh: _loadDeals,
+        onRefresh: () async {
+          await _loadDeals();
+          await dashboardController.loadPostedProducts(refresh: true);
+        },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -120,25 +123,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               const SizedBox(height: 10),
 
-              // Make this scrollable inside SingleChildScrollView by limiting height
-              const SizedBox(height: 10),
               Obx(() {
-                if (dashboardController.postedProducts.isEmpty && !dashboardController.isLoading.value) {
+                if (dashboardController.isLoading.value &&
+                    dashboardController.postedProducts.isEmpty) {
+                  return const Padding(
+                    padding: EdgeInsets.all(32),
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                }
+
+                if (dashboardController.postedProducts.isEmpty) {
                   return const Text('No products posted yet.');
                 }
 
                 return Column(
                   children: [
-                    ...dashboardController.postedProducts.map((product) => _productCard(product)),
+                    ...dashboardController.postedProducts
+                        .map((product) => _productCard(product)),
                     if (dashboardController.isLoading.value)
                       const Padding(
                         padding: EdgeInsets.all(16),
                         child: CircularProgressIndicator(),
-                      )
+                      ),
                   ],
                 );
               }),
-
             ],
           ),
         ),
@@ -176,7 +185,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         deal['product_image'] ?? '',
         width: 40,
         height: 40,
-        errorBuilder: (_, __, ___) => Image.asset('assets/watch1.png', width: 40, height: 40),
+        errorBuilder: (_, __, ___) =>
+            Image.asset('assets/watch1.png', width: 40, height: 40),
       ),
       title: Text(
         deal['product_name'] ?? 'No name',
@@ -211,13 +221,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       contentPadding: EdgeInsets.zero,
       leading: Image.network(
         product['product_image'] ?? '',
-        width: 40,
-        height: 40,
+        width: 60,
+        height: 60,
         errorBuilder: (_, __, ___) => Image.asset('assets/watch1.png'),
       ),
       title: Text(product['product_name'] ?? 'Unnamed'),
       subtitle: Text('৳${product['price'] ?? '0'}'),
     );
   }
-
 }

@@ -164,7 +164,7 @@ class SellerAuthService {
     }
   }
 
-  
+
 
   Future<List<dynamic>> getPostedProducts(String token, {int page = 1, int limit = 15}) async {
     final url = Uri.parse('$baseUrl/get_posted_products.php?page=$page&limit=$limit');
@@ -186,6 +186,66 @@ class SellerAuthService {
       throw Exception(data['message'] ?? 'Failed to fetch posted products');
     }
   }
+
+
+
+  // ✅ ADD OFFER TO PRODUCT (POST)
+  Future<Map<String, dynamic>> addOffer({
+    required String token,
+    required String productId,
+    required String discount,
+    required String offerCategory,
+    String? expiryDate, // Only for 'regular'
+  }) async {
+    final url = Uri.parse('$baseUrl/add_offer.php');
+
+    final body = {
+      'product_id': productId,
+      'discount': discount,
+      'offer_category': offerCategory,
+    };
+
+    // Only include expiry_date for 'regular' offers
+    if (offerCategory == 'regular' && expiryDate != null) {
+      body['expiry_date'] = expiryDate;
+    }
+
+    final response = await http.post(
+      url,
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+      body: body,
+    );
+
+    final data = json.decode(response.body);
+    print('🟠 add_offer.php response: $data');
+
+    if (response.statusCode == 200) {
+      return data;
+    } else {
+      throw Exception(data['message'] ?? 'Failed to add offer. Code: ${response.statusCode}');
+    }
+  }
+
+
+  // ✅ GET PRODUCT DETAILS BY ID (NO AUTH)
+  Future<Map<String, dynamic>> getProductDetails(String productId) async {
+    final url = Uri.parse('$baseUrl/product_details.php?product_id=$productId');
+
+    final response = await http.get(url);
+
+    print('🟢 getProductDetails response: ${response.body}');
+
+    final data = json.decode(response.body);
+
+    if (response.statusCode == 200 && data['status'] == 'success') {
+      return data; // You can return data['product'] if needed
+    } else {
+      throw Exception(data['message'] ?? 'Failed to fetch product details');
+    }
+  }
+
 
 
 
