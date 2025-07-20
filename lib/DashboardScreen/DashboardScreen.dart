@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:intl/intl.dart';
 
 import '../addOffer/AddOfferScreen.dart';
 import '../createPost/CreatePostScreen.dart';
 import '../profile/ProfileScreen.dart';
 import '../service/seller_auth_service.dart';
 import '../storage/token_storage.dart';
+import '../viewProduct/ProductViewPage.dart';
+import 'cards/dealCard.dart';
+import 'cards/productCard.dart';
 import 'dashboard_controller.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -116,7 +120,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 children: _deals
                     .map((deal) => Padding(
                   padding: const EdgeInsets.only(bottom: 7.2), // was 8.0
-                  child: _dealCard(deal),
+                  child: dealCard(deal),
                 ))
                     .toList(),
               ),
@@ -148,8 +152,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                 return Column(
                   children: [
-                    ...dashboardController.postedProducts
-                        .map((product) => _productCard(product)),
+                    ...dashboardController.postedProducts.map((product) {
+                      return InkWell(
+                        onTap: () async {
+                          try {
+                            final resp = await SellerAuthService()
+                                .getProductDetails(product['id'].toString());
+                            final data = resp['data'] as Map<String, dynamic>?;
+                            if (data != null) {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => ProductViewPage(productDetails: data),
+                                ),
+                              );
+                            } else {
+                              Get.snackbar('Error', 'Product details not found.');
+                            }
+                          } catch (e) {
+                            Get.snackbar('Error', 'Failed to fetch product details.');
+                          }
+                        },
+                        child: productCard(product),
+                      );
+                    }).toList(),
+
+
+
                     if (dashboardController.isLoading.value)
                       const Padding(
                         padding: EdgeInsets.all(14.4), // was 16
@@ -191,67 +220,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _dealCard(dynamic deal) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Image.network(
-        deal['product_image'] ?? '',
-        width: 36, // was 40
-        height: 36, // was 40
-        errorBuilder: (_, __, ___) =>
-            Image.asset('assets/watch1.png', width: 36, height: 36),
-      ),
-      title: Text(
-        deal['product_name'] ?? 'No name',
-        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-      ),
-      subtitle: Text(
-        'Exp ${deal['expiry_date'] ?? ''}',
-        style: const TextStyle(fontSize: 13),
-      ),
-      trailing: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            '\৳${deal['price'] ?? ''}',
-            style: const TextStyle(
-              decoration: TextDecoration.lineThrough,
-              color: Colors.grey,
-              fontSize: 12, // was default ~13
-            ),
-          ),
-          Text(
-            '\৳${deal['discount_price'] ?? ''}',
-            style: const TextStyle(
-              color: Colors.red,
-              fontWeight: FontWeight.bold,
-              fontSize: 13,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
-  Widget _productCard(dynamic product) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Image.network(
-        product['product_image'] ?? '',
-        width: 54, // was 60
-        height: 54, // was 60
-        errorBuilder: (_, __, ___) =>
-            Image.asset('assets/watch1.png', width: 54, height: 54),
-      ),
-      title: Text(
-        product['product_name'] ?? 'Unnamed',
-        style: const TextStyle(fontSize: 14),
-      ),
-      subtitle: Text(
-        '৳${product['price'] ?? '0'}',
-        style: const TextStyle(fontSize: 13),
-      ),
-    );
-  }
+
 }

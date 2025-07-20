@@ -241,4 +241,77 @@ class SellerAuthService {
 
 
 
+
+  /// ✅ UPDATE PRODUCT (PUT JSON)
+  /// Endpoint: /update_product.php
+  Future<Map<String, dynamic>> updateProduct({
+    required String token,
+    required String productId,
+    required int stock,
+    required double price,
+  }) async {
+    final url = Uri.parse('$baseUrl/update_product.php');
+
+    final response = await http.put(
+      url,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'product_id': productId,
+        'stock': stock,
+        'price': price,
+      }),
+    );
+
+    print('🟢 updateProduct response: ${response.body}');
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      return data;
+    } else {
+      throw Exception(
+        "Failed to update product. Code: ${response.statusCode}",
+      );
+    }
+  }
+
+  /// ✅ DELETE PRODUCT OR OFFERS (DELETE JSON)
+  /// Endpoint: /delete.php
+  Future<Map<String, dynamic>> deleteItem({
+    required String token,
+    required String productId,
+    required String item, // 'offers' or 'products'
+  }) async {
+    final url = Uri.parse('$baseUrl/delete.php');
+
+    final response = await http.delete(
+      url,
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'product_id': productId,
+        'item': item,
+      }),
+    );
+
+    print('🔴 deleteItem response: ${response.body}');
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      return data;
+    } else {
+      throw Exception(
+        "Failed to delete $item. Code: ${response.statusCode}",
+      );
+    }
+  }
+
+
+
+
+
 }

@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 import '../service/seller_auth_service.dart';
 import '../storage/token_storage.dart';
+import '../viewProduct/ProductViewPage.dart';
 
 class DashboardController extends GetxController {
   final SellerAuthService _authService = SellerAuthService();
@@ -40,4 +41,11 @@ class DashboardController extends GetxController {
       isLoading.value = false;
     }
   }
+
+
+
 }
+
+
+
+
