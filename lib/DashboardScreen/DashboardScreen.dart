@@ -29,12 +29,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> _loadDeals() async {
     final token = await TokenStorage.getToken();
-
     if (token == null) {
       Get.snackbar("Login Required", "Please login first");
       return;
     }
-
     try {
       final deals = await _authService.getCurrentDeals(token, page: 1, limit: 5);
       setState(() {
@@ -72,42 +70,52 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Top 3 buttons
+              // Top 3 buttons (each ~10% smaller)
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _dashboardIconButton(
-                    Icons.add_circle_outline,
-                    'CreatePost',
-                    Colors.deepOrange,
-                    onTap: () => Get.to(() => CreatePostScreen()),
+                  Expanded(
+                    child: _dashboardIconButton(
+                      Icons.add_circle_outline,
+                      'Create Post',
+                      Colors.deepOrange,
+                      onTap: () => Get.to(() => CreatePostScreen()),
+                    ),
                   ),
-                  _dashboardIconButton(
-                    Icons.local_offer_outlined,
-                    'add offer',
-                    Colors.lightBlue,
-                    onTap: () => Get.to(() => const AddOfferScreen()),
+                  const SizedBox(width: 5),
+                  Expanded(
+                    child: _dashboardIconButton(
+                      Icons.local_offer_outlined,
+                      'Add Offer',
+                      Colors.lightBlue,
+                      onTap: () => Get.to(() => const AddOfferScreen()),
+                    ),
                   ),
-                  _dashboardIconButton(
-                    Icons.person_outline,
-                    'profile',
-                    Colors.lightGreen,
-                    onTap: () => Get.to(() => const ProfileScreen()),
+                  const SizedBox(width: 5),
+                  Expanded(
+                    child: _dashboardIconButton(
+                      Icons.person_outline,
+                      'Profile',
+                      Colors.lightGreen,
+                      onTap: () => Get.to(() => const ProfileScreen()),
+                    ),
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
+
+              const SizedBox(height: 18), // was 20
 
               // Current Deal section
-              const Text('Current Deal',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 10),
+              const Text(
+                'Current Deal',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold), // was 16
+              ),
+              const SizedBox(height: 9), // was 10
               _deals.isEmpty
                   ? const Text("No current deals available.")
                   : Column(
                 children: _deals
                     .map((deal) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8.0),
+                  padding: const EdgeInsets.only(bottom: 7.2), // was 8.0
                   child: _dealCard(deal),
                 ))
                     .toList(),
@@ -116,18 +124,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 alignment: Alignment.centerRight,
                 child: Text('View all ▼', style: TextStyle(color: Colors.black)),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 18), // was 20
 
               // Product List section
-              const Text('Products List',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 10),
+              const Text(
+                'Products List',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold), // was 16
+              ),
+              const SizedBox(height: 9), // was 10
 
               Obx(() {
                 if (dashboardController.isLoading.value &&
                     dashboardController.postedProducts.isEmpty) {
                   return const Padding(
-                    padding: EdgeInsets.all(32),
+                    padding: EdgeInsets.all(28.8), // was 32
                     child: Center(child: CircularProgressIndicator()),
                   );
                 }
@@ -142,7 +152,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         .map((product) => _productCard(product)),
                     if (dashboardController.isLoading.value)
                       const Padding(
-                        padding: EdgeInsets.all(16),
+                        padding: EdgeInsets.all(14.4), // was 16
                         child: CircularProgressIndicator(),
                       ),
                   ],
@@ -160,18 +170,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 100,
-        padding: const EdgeInsets.symmetric(vertical: 16),
+        width: 90, // was 100
+        padding: const EdgeInsets.symmetric(vertical: 14), // was 16
         decoration: BoxDecoration(
           color: color,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(9), // was 10
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: Colors.black),
+            Icon(icon, size: 22, color: Colors.black), // default icon ~24 -> 22
             const SizedBox(height: 4),
-            Text(label, style: const TextStyle(color: Colors.black)),
+            Text(
+              label,
+              style: const TextStyle(color: Colors.black, fontSize: 13), // default ~14
+            ),
           ],
         ),
       ),
@@ -183,16 +196,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
       contentPadding: EdgeInsets.zero,
       leading: Image.network(
         deal['product_image'] ?? '',
-        width: 40,
-        height: 40,
+        width: 36, // was 40
+        height: 36, // was 40
         errorBuilder: (_, __, ___) =>
-            Image.asset('assets/watch1.png', width: 40, height: 40),
+            Image.asset('assets/watch1.png', width: 36, height: 36),
       ),
       title: Text(
         deal['product_name'] ?? 'No name',
-        style: const TextStyle(fontWeight: FontWeight.bold),
+        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
       ),
-      subtitle: Text('Exp ${deal['expiry_date'] ?? ''}'),
+      subtitle: Text(
+        'Exp ${deal['expiry_date'] ?? ''}',
+        style: const TextStyle(fontSize: 13),
+      ),
       trailing: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         mainAxisAlignment: MainAxisAlignment.center,
@@ -202,6 +218,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             style: const TextStyle(
               decoration: TextDecoration.lineThrough,
               color: Colors.grey,
+              fontSize: 12, // was default ~13
             ),
           ),
           Text(
@@ -209,6 +226,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             style: const TextStyle(
               color: Colors.red,
               fontWeight: FontWeight.bold,
+              fontSize: 13,
             ),
           ),
         ],
@@ -221,12 +239,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
       contentPadding: EdgeInsets.zero,
       leading: Image.network(
         product['product_image'] ?? '',
-        width: 60,
-        height: 60,
-        errorBuilder: (_, __, ___) => Image.asset('assets/watch1.png'),
+        width: 54, // was 60
+        height: 54, // was 60
+        errorBuilder: (_, __, ___) =>
+            Image.asset('assets/watch1.png', width: 54, height: 54),
       ),
-      title: Text(product['product_name'] ?? 'Unnamed'),
-      subtitle: Text('৳${product['price'] ?? '0'}'),
+      title: Text(
+        product['product_name'] ?? 'Unnamed',
+        style: const TextStyle(fontSize: 14),
+      ),
+      subtitle: Text(
+        '৳${product['price'] ?? '0'}',
+        style: const TextStyle(fontSize: 13),
+      ),
     );
   }
 }

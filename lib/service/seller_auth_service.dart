@@ -108,11 +108,8 @@ class SellerAuthService {
   }
 
 
-// ✅ GET CURRENTDEALS
-
-
   Future<List<dynamic>> getCurrentDeals(String token, {int page = 1, int limit = 15}) async {
-    final url = Uri.parse('$baseUrl/get_current_deals.php?page=$page&limit=$limit');
+    final url = Uri.parse('https://dealzyloop.com/api/get_current_deals.php?page=$page&limit=$limit');
 
     final response = await http.get(
       url,
@@ -122,25 +119,19 @@ class SellerAuthService {
     );
 
     final data = json.decode(response.body);
-
     print('🛠️ getCurrentDeals response: ${response.body}');
 
-    if ((data['products'] as List?)?.isEmpty == true && data['total_products'] > 0) {
-      print('⚠️ Backend says there is 1 product but returned empty list.');
+    if (response.statusCode == 200) {
+      final products = data['products'] as List<dynamic>?;
 
-      return [
-        {
-          "product_name": "Fake Sample Product",
-          "price": "1999.99",
-          "discount_price": 1499.99,
-          "expiry_date": "2025-11-30",
-          "product_image": "https://dealzyloop.com/api/upload/products/sample.png"
-        }
-      ];
-    }
-
-    else {
-      throw Exception(data['message'] ?? 'Failed to fetch deals');
+      print('📦 current deal response: ${response.body}');
+      if (products != null && products.isNotEmpty) {
+        return products;
+      } else {
+        throw Exception(data['message'] ?? 'No products found');
+      }
+    } else {
+      throw Exception('Failed to fetch deals: ${response.statusCode}');
     }
   }
 
@@ -195,7 +186,7 @@ class SellerAuthService {
     required String productId,
     required String discount,
     required String offerCategory,
-    String? expiryDate, // Only for 'regular'
+    String? expiryDate,
   }) async {
     final url = Uri.parse('$baseUrl/add_offer.php');
 
@@ -205,7 +196,6 @@ class SellerAuthService {
       'offer_category': offerCategory,
     };
 
-    // Only include expiry_date for 'regular' offers
     if (offerCategory == 'regular' && expiryDate != null) {
       body['expiry_date'] = expiryDate;
     }
@@ -214,8 +204,9 @@ class SellerAuthService {
       url,
       headers: {
         'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json', // ✅ Important
       },
-      body: body,
+      body: jsonEncode(body), // ✅ send as JSON
     );
 
     final data = json.decode(response.body);
@@ -227,6 +218,7 @@ class SellerAuthService {
       throw Exception(data['message'] ?? 'Failed to add offer. Code: ${response.statusCode}');
     }
   }
+
 
 
   // ✅ GET PRODUCT DETAILS BY ID (NO AUTH)

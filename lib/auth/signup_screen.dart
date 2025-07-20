@@ -9,8 +9,6 @@ import 'package:get/get_core/src/get_main.dart';
 import '../service/seller_auth_service.dart';
 
 class SignUpScreen extends StatefulWidget {
-
-
   const SignUpScreen({super.key});
 
 
@@ -28,7 +26,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final storeNameController = TextEditingController();
   final storeAddressController = TextEditingController();
   String selectedStoreType = 'Retail';
-  String profileImagePath = ''; // Set this via I
+  String profileImagePath = '';
 
   final SellerAuthService _authService = SellerAuthService();
 // magePicker
@@ -222,7 +220,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
               child: Column(
                 children: [
-                  const TextField(
+                   TextField(
+                     controller: phoneController,
                     style: TextStyle(fontSize: 14),
                     decoration: InputDecoration(
                       contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -289,18 +288,43 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   ),
                   const SizedBox(height: 24),
                   Center(
-                    child: ElevatedButton(
-                      onPressed: nextStep,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0C3D78),
-                        foregroundColor: Colors.white,
-                        minimumSize: const Size(180, 45),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+
+                      child: ElevatedButton(
+                        onPressed: () {
+                          final phone = phoneController.text.trim();
+                          final password = passwordController.text;
+                          final confirmPassword = confirmPasswordController.text;
+
+                          if (phone.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
+                            Get.snackbar('Missing Fields', 'Please fill all fields');
+                            return;
+                          }
+
+                          if (password != confirmPassword) {
+                            Get.snackbar('Password Mismatch', 'Passwords do not match');
+                            return;
+                          }
+
+                          // ✅ Validation passed: print values
+                          print('Phone: $phone');
+                          print('Password: $password');
+                          print('Confirm Password: $confirmPassword');
+
+                          nextStep();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF0C3D78),
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size.fromHeight(40.5), // responsive height
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(9),
+                          ),
+                        ),
+                        child: const Text(
+                          'Confirm',
+                          style: TextStyle(fontSize: 12.6),
                         ),
                       ),
-                      child: const Text('Confirm'),
-                    ),
                   ),
                   const SizedBox(height: 50), // leave space for characters
                   const Text(
@@ -419,29 +443,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         ),
         const SizedBox(height: 12),
 
-        // Phone number
-        TextField(
-          controller: phoneController,
-          style: const TextStyle(fontSize: 14),
-          decoration: const InputDecoration(
-            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            labelText: 'Enter your phone number',
-            labelStyle: TextStyle(fontSize: 14),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.all(Radius.circular(20)),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.all(Radius.circular(20)),
-              borderSide: BorderSide(color: Colors.grey),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.all(Radius.circular(20)),
-              borderSide: BorderSide(color: Colors.blue),
-            ),
-          ),
-        ),
 
-        const SizedBox(height: 12),
 
         // Store name
          TextField(
@@ -574,65 +576,5 @@ class _SignUpScreenState extends State<SignUpScreen> {
   }
 
 
-  // Widget buildDetailsStep2() {
-  //   return Column(
-  //     children: [
-  //       CircleAvatar(
-  //         radius: 32,
-  //         backgroundColor: Colors.grey[300],
-  //         child: Icon(Icons.person, size: 32, color: Colors.grey[600]),
-  //       ),
-  //       const SizedBox(height: 20),
-  //       const TextField(
-  //         decoration: InputDecoration(
-  //           labelText: 'Username',
-  //           border: OutlineInputBorder(),
-  //         ),
-  //       ),
-  //       const SizedBox(height: 12),
-  //       const TextField(
-  //         decoration: InputDecoration(
-  //           labelText: 'Phone number',
-  //           border: OutlineInputBorder(),
-  //         ),
-  //       ),
-  //       const SizedBox(height: 12),
-  //       const TextField(
-  //         decoration: InputDecoration(
-  //           labelText: 'Store name',
-  //           border: OutlineInputBorder(),
-  //         ),
-  //       ),
-  //       const SizedBox(height: 12),
-  //       const TextField(
-  //         decoration: InputDecoration(
-  //           labelText: 'Store address',
-  //           border: OutlineInputBorder(),
-  //         ),
-  //       ),
-  //       const SizedBox(height: 12),
-  //       DropdownButtonFormField<String>(
-  //         decoration: const InputDecoration(
-  //           labelText: 'Store type',
-  //           border: OutlineInputBorder(),
-  //         ),
-  //         items: [
-  //           'Retail',
-  //           'Wholesale',
-  //           'Service',
-  //         ].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-  //         onChanged: (_) {},
-  //       ),
-  //       const SizedBox(height: 24),
-  //       Center(
-  //         child: ElevatedButton(
-  //           onPressed: () {
-  //             Get.to(() => const CreatePostScreen());
-  //           },
-  //           child: const Text('Confirm'),
-  //         ),
-  //       ),
-  //     ],
-  //   );
-  // }
+
 }

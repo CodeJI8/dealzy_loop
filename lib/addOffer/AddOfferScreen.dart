@@ -187,11 +187,41 @@ class ProductItemCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Row(
-                    children: const [
-                      Text('View Details', style: TextStyle(color: Colors.grey, fontSize: 12)),
-                      SizedBox(width: 4),
-                      Icon(Icons.arrow_forward, size: 14, color: Colors.grey),
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('View Details', style: TextStyle(color: Colors.grey, fontSize: 12)),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.arrow_forward, size: 14, color: Colors.grey),
+
+
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (_) => OfferTypeDialog(
+                                productId: productId,
+                                controller: addOfferController,
+                              ),
+
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFFFE0B2),
+                            foregroundColor: Colors.black,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                            elevation: 0,
+                            minimumSize: Size(screenWidth * 0.2, 32),
+                          ),
+                          child: const Text('Add Offer', style: TextStyle(fontSize: 12)),
+                        ),
+                      ),
+
                     ],
+
+
                   ),
                   const SizedBox(height: 4),
                   const Text(
@@ -200,43 +230,7 @@ class ProductItemCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
 
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        showDialog(
-                          context: context,
-                          builder: (_) => OfferTypeDialog(
-                            onSelected: (offerType) async {
-                              Navigator.pop(context); // Close dialog
-                              const discount = "25"; // You may replace with input
-                              String? expiryDate;
 
-                              if (offerType == 'regular') {
-                                expiryDate = await selectExpiryDate(context);
-                              }
-
-                              await addOfferController.addOffer(
-                                productId: productId,
-                                discount: discount,
-                                offerCategory: offerType,
-                                expiryDate: expiryDate,
-                              );
-                            },
-                          ),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFFE0B2),
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                        elevation: 0,
-                        minimumSize: Size(screenWidth * 0.2, 32),
-                      ),
-                      child: const Text('Add Offer', style: TextStyle(fontSize: 12)),
-                    ),
-                  ),
                 ],
               ),
             ),
