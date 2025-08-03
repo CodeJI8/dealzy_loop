@@ -2,6 +2,12 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import 'package:get/get.dart';
+
+import '../../service/seller_auth_service.dart';
+import '../../storage/token_storage.dart';
+
+
 Widget dealCard(Map<String, dynamic> deal) {
   // parse & format expiry date
   final expiry = DateTime.tryParse(deal['expiry_date'] ?? '');
@@ -74,10 +80,41 @@ Widget dealCard(Map<String, dynamic> deal) {
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(),
           icon: const Icon(Icons.close, size: 20, color: Colors.black54),
-          onPressed: () {
-            // TODO: handle remove deal
+          onPressed: () async {
+            // 1️⃣ Get the token
+            final token = await TokenStorage.getToken();
+            if (token == null) {
+              Get.snackbar('Error', 'Please login first');
+              return;
+            }
+
+            // 2️⃣ Call the delete API
+            try {
+              final response = await SellerAuthService().deleteItem(
+                token: token,
+                productId: deal['id'].toString(),
+                item: 'offers',
+              );
+
+              // 3️⃣ Handle the response
+              if (response['status'] == 'success') {
+                Get.snackbar('Deleted', response['message'] ?? 'Deal removed');
+                // 4️⃣ Remove from your local list and refresh the UI.
+                //    If you manage deals in a parent StatefulWidget:
+                //    setState(() {
+                //      _deals.removeWhere((d) => d['id'] == deal['id']);
+                //    });
+                //    Or, if you use a GetxController:
+                //    yourController.deals.removeWhere((d) => d['id'] == deal['id']);
+              } else {
+                throw Exception(response['message']);
+              }
+            } catch (e) {
+              Get.snackbar('Error', e.toString());
+            }
           },
         ),
+
       ],
     ),
   );

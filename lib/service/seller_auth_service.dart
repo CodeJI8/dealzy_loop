@@ -4,6 +4,7 @@ import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
 import 'package:seller_loop/service/models/post_product_request.dart';
 
+import 'models/SellerProfile.dart';
 import 'models/post_product_response.dart';
 
 class SellerAuthService {
@@ -242,6 +243,33 @@ class SellerAuthService {
 
 
 
+  Future<SellerProfileResponse> getSellerProfile({
+    required String token,
+  }) async {
+    final url = Uri.parse('$baseUrl/seller_profile.php');
+    final response = await http.get(
+      url,
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+      return SellerProfileResponse.fromJson(decoded);
+    } else {
+      throw Exception(
+          'Failed to load profile. '
+              'Code: ${response.statusCode}, '
+              'Body: ${response.body}'
+      );
+    }
+  }
+
+
+
+
+
   /// ✅ UPDATE PRODUCT (PUT JSON)
   /// Endpoint: /update_product.php
   Future<Map<String, dynamic>> updateProduct({
@@ -277,14 +305,21 @@ class SellerAuthService {
     }
   }
 
-  /// ✅ DELETE PRODUCT OR OFFERS (DELETE JSON)
-  /// Endpoint: /delete.php
   Future<Map<String, dynamic>> deleteItem({
     required String token,
     required String productId,
     required String item, // 'offers' or 'products'
   }) async {
     final url = Uri.parse('$baseUrl/delete.php');
+    final body = jsonEncode({
+      'product_id': productId,
+      'item': item,
+    });
+
+    // 🔍 Log the request
+    print('🔴 DELETE $url');
+    print('    Authorization: Bearer $token');
+    print('    Body: $body');
 
     final response = await http.delete(
       url,
@@ -292,23 +327,25 @@ class SellerAuthService {
         'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
       },
-      body: jsonEncode({
-        'product_id': productId,
-        'item': item,
-      }),
+      body: body,
     );
 
-    print('🔴 deleteItem response: ${response.body}');
+    // 🔍 Log the response
+    print('🟢 Response code: ${response.statusCode}');
+    print('    Response body: ${response.body}');
 
     if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      return data;
+      return jsonDecode(response.body);
     } else {
       throw Exception(
-        "Failed to delete $item. Code: ${response.statusCode}",
+          'Failed to delete $item. '
+              'Code: ${response.statusCode}, '
+              'Body: ${response.body}'
       );
     }
   }
+
+
 
 
 

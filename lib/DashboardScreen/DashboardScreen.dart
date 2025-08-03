@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:get/get.dart';
-import 'package:intl/intl.dart';
-
+import '../storage/token_storage.dart';
 import '../addOffer/AddOfferScreen.dart';
 import '../createPost/CreatePostScreen.dart';
 import '../profile/ProfileScreen.dart';
@@ -31,6 +31,51 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _loadDeals();
   }
 
+    Future<void> _deleteProductAndOffers(String productId) async {
+    final token = await TokenStorage.getToken();
+    if (token == null) {
+      Get.snackbar('Error', 'Login required');
+      return;
+    }
+
+    try {
+      // 1️⃣ Delete all offers (affects Current Deals)
+      final delOffers = await _authService.deleteItem(
+        token: token,
+        productId: productId,
+        item: 'offers',
+      );
+      if (delOffers['status'] != 'success') {
+        throw Exception(delOffers['message'] ?? 'Failed to delete offers');
+      }
+
+      // 2️⃣ Delete the product itself (affects Products List)
+      final delProduct = await _authService.deleteItem(
+        token: token,
+        productId: productId,
+        item: 'products',
+      );
+      if (delProduct['status'] != 'success') {
+        throw Exception(delProduct['message'] ?? 'Failed to delete product');
+      }
+
+      // 3️⃣ Update your local UI state
+      //    • Remove from Current Deals
+      setState(() {
+        _deals.removeWhere((deal) => deal['id'].toString() == productId);
+      });
+      //    • Remove from Products List
+      dashboardController.postedProducts
+          .removeWhere((p) => p['id'].toString() == productId);
+
+      Get.snackbar('Deleted', delProduct['message'] ?? 'Item removed');
+    } catch (e) {
+      Get.snackbar('Error', e.toString());
+    }
+  }
+
+
+
   Future<void> _loadDeals() async {
     final token = await TokenStorage.getToken();
     if (token == null) {
@@ -44,7 +89,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       });
     } catch (e) {
       print("Error loading deals: $e");
-      Get.snackbar("Error", e.toString());
+
     }
   }
 
@@ -137,56 +182,84 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
               const SizedBox(height: 9), // was 10
 
-              Obx(() {
-                if (dashboardController.isLoading.value &&
-                    dashboardController.postedProducts.isEmpty) {
-                  return const Padding(
-                    padding: EdgeInsets.all(28.8), // was 32
-                    child: Center(child: CircularProgressIndicator()),
-                  );
-                }
+         Obx(() {
+      final products = dashboardController.postedProducts;
+      final isLoading = dashboardController.isLoading.value;
 
-                if (dashboardController.postedProducts.isEmpty) {
-                  return const Text('No products posted yet.');
-                }
+      // 1. Show loader if first‐load is in progress
+      if (isLoading && products.isEmpty) {
+        return const Center(child: CircularProgressIndicator());
+      }
 
-                return Column(
-                  children: [
-                    ...dashboardController.postedProducts.map((product) {
-                      return InkWell(
-                        onTap: () async {
-                          try {
-                            final resp = await SellerAuthService()
-                                .getProductDetails(product['id'].toString());
-                            final data = resp['data'] as Map<String, dynamic>?;
-                            if (data != null) {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => ProductViewPage(productDetails: data),
-                                ),
-                              );
-                            } else {
-                              Get.snackbar('Error', 'Product details not found.');
-                            }
-                          } catch (e) {
-                            Get.snackbar('Error', 'Failed to fetch product details.');
-                          }
-                        },
-                        child: productCard(product),
+      // 2. No products to show
+      if (products.isEmpty) {
+        return const Center(child: Text('No products posted yet.'));
+      }
+
+      // 3. Display the list
+      return Column(
+        children: [
+          ...products.map((product) {
+            final id = product['id'].toString();
+
+            return Slidable(
+              key: ValueKey(id),
+              endActionPane: ActionPane(
+                motion: const DrawerMotion(),
+                extentRatio: 0.25,
+                children: [
+                  SlidableAction(
+                    onPressed: (_) async {
+                      // 1️⃣ confirm deletion
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (_) => AlertDialog(
+                          title: const Text('Confirm Deletion'),
+                          content: const Text(
+                              'This will delete the product and all its offers. Continue?'
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, false),
+                              child: const Text('Cancel'),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, true),
+                              child: const Text('Delete'),
+                            ),
+                          ],
+                        ),
                       );
-                    }).toList(),
+                      if (confirm != true) return;
+
+                      // 2️⃣ run your two‐step delete
+                      await _deleteProductAndOffers(id);
+                    },
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                    icon: Icons.delete,
+                    label: 'Delete',
+                  ),
+                ],
+              ),
+              child: InkWell(
+                onTap: () => product(product['id'].toString()), // or navigate to detail page
+                child: productCard(product),
+              ),
+            );
+          }).toList(),
+
+          // 4. Show a loader at the bottom if more pages are loading
+          if (isLoading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: CircularProgressIndicator(),
+            ),
+        ],
+      );
+    }),
 
 
-
-                    if (dashboardController.isLoading.value)
-                      const Padding(
-                        padding: EdgeInsets.all(14.4), // was 16
-                        child: CircularProgressIndicator(),
-                      ),
-                  ],
-                );
-              }),
             ],
           ),
         ),
@@ -223,3 +296,5 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
 
 }
+
+
