@@ -1,9 +1,10 @@
 import 'dart:io';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:seller_loop/DashboardScreen/DashboardScreen.dart';
 
 import '../service/models/post_product_request.dart';
-import '../service/models/post_product_response.dart';
+
 import '../service/seller_auth_service.dart';
 import '../storage/token_storage.dart';
 
@@ -147,24 +148,34 @@ class CreatePostController extends GetxController {
       final request = PostProductRequest(
         categoryId:  selectedCategory.value,
         productName: productName.value,
-        brand:       brand.value,
-        model:       model.value,
-        price:       double.tryParse(price.value)     ?? 0.0,
-        stock:       int.tryParse(stock.value)        ?? 0,
-        description: description.value,
-        // turn your lists into arrays, or null if empty:
-        colors:   selectedColors.isNotEmpty ? selectedColors.toList() : null,
-        variants: variants.isNotEmpty       ? variants.toList()       : null,
-        imageFiles: selectedImages
+        brand:       brand.value.isNotEmpty ? brand.value : '',
+        model:       model.value.isNotEmpty ? model.value : '',
+        price:       double.tryParse(price.value) ?? 0.0,
+        stock:       stock.value.isNotEmpty ? int.tryParse(stock.value) ?? 0 : 0,
+        description: description.value.isNotEmpty ? description.value : '',
+        colors:      selectedColors.isNotEmpty ? selectedColors.toList() : null,
+        variants:    variants.isNotEmpty ? variants.toList() : null,
+        imageFiles:  selectedImages
             .where((f) => f != null)
             .cast<File>()
             .toList(),
       );
 
+
+
       final resp = await _authService.postProduct(
         token: token,
         requestModel: request,
       );
+
+      if(resp.status == "success"){
+Get.snackbar("Upload Successfull", resp.message);
+Get.offAll(() => DashboardScreen());
+      }
+
+      else {
+        Get.snackbar("Error", resp.message);
+      }
 
       Get.snackbar(
         resp.status.capitalizeFirst ?? 'Status',

@@ -124,35 +124,35 @@ class ProfileScreen extends StatelessWidget {
 
               const SizedBox(height: 16),
 
-              // ─── Opening Hours ──────────────────────────────────
-              Row(
-                children: [
-                  const Icon(Icons.access_time, color: Colors.black),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: RichText(
-                      text: TextSpan(
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Colors.black,
-                        ),
-                        children: [
-                          const TextSpan(text: '10:00 am '),
-                          TextSpan(
-                            text: '(open)',
-                            style: const TextStyle(color: Colors.green),
-                          ),
-                          const TextSpan(text: ' to 9:30 pm '),
-                          TextSpan(
-                            text: '(close)',
-                            style: const TextStyle(color: Colors.red),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+              // // ─── Opening Hours ──────────────────────────────────
+              // Row(
+              //   children: [
+              //     const Icon(Icons.access_time, color: Colors.black),
+              //     const SizedBox(width: 12),
+              //     Expanded(
+              //       child: RichText(
+              //         text: TextSpan(
+              //           style: const TextStyle(
+              //             fontSize: 14,
+              //             color: Colors.black,
+              //           ),
+              //           children: [
+              //             const TextSpan(text: '10:00 am '),
+              //             TextSpan(
+              //               text: '(open)',
+              //               style: const TextStyle(color: Colors.green),
+              //             ),
+              //             const TextSpan(text: ' to 9:30 pm '),
+              //             TextSpan(
+              //               text: '(close)',
+              //               style: const TextStyle(color: Colors.red),
+              //             ),
+              //           ],
+              //         ),
+              //       ),
+              //     ),
+              //   ],
+              // ),
 
               const Spacer(),
 

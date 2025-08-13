@@ -88,7 +88,7 @@ class _OfferTypeDialogState extends State<OfferTypeDialog> {
                 Expanded(
                   child: Text(
                     isSecondStep
-                        ? 'What is the  discount price percentage?'
+                        ? 'What is the  discount price ?'
                         : 'What type of offer would you like to include?',
                     style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                   ),
@@ -122,7 +122,7 @@ class _OfferTypeDialogState extends State<OfferTypeDialog> {
 
             // Step 2: Discount + Expiry
             if (isSecondStep) ...[
-              _buildTextField('Discount Price', discountController, Icons.percent),
+              _buildTextField('Discount Price', discountController, Icons.monetization_on_sharp),
               const SizedBox(height: 12),
 
               if (selectedOfferType?.toLowerCase() != 'regular')

@@ -55,7 +55,7 @@ Widget dealCard(Map<String, dynamic> deal) {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Text(
-              '৳${deal['price'] ?? ''}',
+              '\$${deal['price'] ?? ''}',
               style: const TextStyle(
                 decoration: TextDecoration.lineThrough,
                 color: Colors.grey,
@@ -64,7 +64,7 @@ Widget dealCard(Map<String, dynamic> deal) {
             ),
             Text(
               // round to 2 decimals
-              '৳${(deal['discount_price'] as num).toStringAsFixed(2)}',
+              '\$${(deal['discount_price'] as num).toStringAsFixed(2)}',
               style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.bold,

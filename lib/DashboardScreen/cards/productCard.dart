@@ -52,7 +52,7 @@ Widget productCard(Map<String, dynamic> product) {
               Row(
                 children: [
                   Text(
-                    '৳${product['price'] ?? '0'}',
+              '\$${product['price'] ?? '0'}',
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,

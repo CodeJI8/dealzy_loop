@@ -125,7 +125,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Expanded(
                     child: _dashboardIconButton(
                       Icons.add_circle_outline,
-                      'Create Post',
+                      'Add Product',
                       Colors.deepOrange,
                       onTap: () => Get.to(() => CreatePostScreen()),
                     ),
