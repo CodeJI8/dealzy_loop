@@ -1,40 +1,36 @@
 import 'dart:io';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:seller_loop/DashboardScreen/DashboardScreen.dart';
 
 import '../service/models/post_product_request.dart';
-
 import '../service/seller_auth_service.dart';
 import '../storage/token_storage.dart';
+import '../DashboardScreen/DashboardScreen.dart';
 
 class CreatePostController extends GetxController {
-  // ── Services ─────────────────────────────────────────────
   final SellerAuthService _authService = SellerAuthService();
   final ImagePicker picker = ImagePicker();
 
-  // ── Reactive State ──────────────────────────────────────
-  /// The list of images (with one trailing `null` slot for “Add Image”).
-  RxList<File?> selectedImages = <File?>[null].obs;
+  /// Only store ACTUAL images here (no trailing nulls).
+  RxList<File> selectedImages = <File>[].obs;
 
-  /// Category data
-  RxList<dynamic> categories        = <dynamic>[].obs;
-  RxBool         isLoadingCategories = true.obs;
-  RxString       selectedCategory    = ''.obs;
+  // Categories
+  RxList<dynamic> categories = <dynamic>[].obs;
+  RxBool isLoadingCategories = true.obs;
+  RxString selectedCategory = ''.obs;
 
-  /// Simple text fields
+  // Fields
   RxString productName = ''.obs;
-  RxString brand       = ''.obs;
-  RxString model       = ''.obs;
-  RxString price       = ''.obs;
-  RxString stock       = ''.obs;
+  RxString brand = ''.obs;
+  RxString model = ''.obs;
+  RxString price = ''.obs;
+  RxString stock = ''.obs;
   RxString description = ''.obs;
 
-  /// **NEW**: Lists for multi-select tags
+  // Chips
   RxList<String> selectedColors = <String>[].obs;
-  RxList<String> variants       = <String>[].obs;
+  RxList<String> variants = <String>[].obs;
 
-  /// Loading flag for submit button
   RxBool isLoading = false.obs;
 
   @override
@@ -43,52 +39,117 @@ class CreatePostController extends GetxController {
     loadCategories();
   }
 
-  /// Adds a new color tag if non-empty & not already present
-  void addColor(String value) {
-    final color = value.trim();
-    if (color.isNotEmpty && !selectedColors.contains(color)) {
-      selectedColors.add(color);
-    }
-  }
+  // ---- Images ----
 
-  // ── Image Picker / Remover ──────────────────────────────
+  /// If [index] < images.length -> replace; else append.
+  Future<void> pickImageForSlot(int index, ImageSource source) async {
+    final XFile? x = await picker.pickImage(
+      source: source,
+      preferredCameraDevice: CameraDevice.rear,
+      imageQuality: 80,
+      maxWidth: 1920,
+      maxHeight: 1920,
+    );
+    if (x == null) return;
 
-  /// Pick an image into slot [index].
-  /// If that was the last slot, append a new `null` slot at the end.
-  Future<void> pickImage(int index) async {
-    final picked = await picker.pickImage(source: ImageSource.gallery);
-    if (picked == null) return;
-
-    final file = File(picked.path);
+    final file = File(x.path);
     if (index < selectedImages.length) {
       selectedImages[index] = file;
     } else {
       selectedImages.add(file);
     }
-    // ensure one empty slot at end
-    if (selectedImages.last != null) {
-      selectedImages.add(null);
-    }
   }
 
-  /// Remove the image at [index], then clean up extra `null` slots.
   void removeImage(int index) {
-    if (index < selectedImages.length) {
-      selectedImages[index] = null;
-    }
-    // ensure one trailing null
-    if (selectedImages.isEmpty || selectedImages.last != null) {
-      selectedImages.add(null);
-    }
-    // drop extra null if there are two
-    if (selectedImages.length >= 2 &&
-        selectedImages[selectedImages.length - 2] == null &&
-        selectedImages.last                       == null) {
-      selectedImages.removeLast();
+    if (index >= 0 && index < selectedImages.length) {
+      selectedImages.removeAt(index);
     }
   }
 
-  // ── Category Loader ─────────────────────────────────────
+  bool _validateRequiredFields() {
+    // Images: at least one
+    if (selectedImages.isEmpty) {
+      Get.snackbar(
+        'Image required',
+        'Please add at least one product image.',
+        snackPosition: SnackPosition.TOP,
+        duration: const Duration(seconds: 3),
+      );
+      return false;
+    }
+
+    // Product name: required & sensible length
+    final name = productName.value.trim();
+    if (name.isEmpty || name.length < 3) {
+      Get.snackbar(
+        'Product name required',
+        'Please enter a product name (min 3 characters).',
+        snackPosition: SnackPosition.TOP,
+        duration: const Duration(seconds: 3),
+      );
+      return false;
+    }
+
+    // Category: required
+    if (selectedCategory.value.trim().isEmpty) {
+      Get.snackbar(
+        'Category required',
+        'Please select a category.',
+        snackPosition: SnackPosition.TOP,
+        duration: const Duration(seconds: 3),
+      );
+      return false;
+    }
+
+    // Price: required & > 0
+    final p = double.tryParse(price.value.trim());
+    if (p == null || p <= 0) {
+      Get.snackbar(
+        'Price required',
+        'Please enter a valid price greater than 0.',
+        snackPosition: SnackPosition.TOP,
+        duration: const Duration(seconds: 3),
+      );
+      return false;
+    }
+
+    // Stock: required & >= 1
+    final s = int.tryParse(stock.value.trim());
+    if (s == null || s < 1) {
+      Get.snackbar(
+        'Stock required',
+        'Please enter a valid stock (at least 1).',
+        snackPosition: SnackPosition.TOP,
+        duration: const Duration(seconds: 3),
+      );
+      return false;
+    }
+
+    return true;
+  }
+
+
+
+
+  void _notifyMissingOptionalFields() {
+    final missing = <String>[];
+    if (brand.value.isEmpty) missing.add('Brand');
+    if (model.value.isEmpty) missing.add('Model');
+    if (selectedColors.isEmpty) missing.add('Color');
+    if (variants.isEmpty) missing.add('Variant');
+    if (description.value.isEmpty) missing.add('Description');
+
+    if (missing.isNotEmpty) {
+      Get.snackbar(
+        'Tip',
+        'You can improve your post by adding: ${missing.join(', ')}',
+        snackPosition: SnackPosition.TOP,
+        duration: const Duration(seconds: 3),
+      );
+    }
+  }
+
+  // ---- Categories ----
 
   Future<void> loadCategories() async {
     final token = await TokenStorage.getToken();
@@ -107,9 +168,8 @@ class CreatePostController extends GetxController {
     }
   }
 
-  // ── Color & Variant Helpers ─────────────────────────────
+  // ---- Chips ----
 
-  /// Toggle a color on/off in the selection.
   void toggleColor(String color) {
     if (selectedColors.contains(color)) {
       selectedColors.remove(color);
@@ -118,7 +178,6 @@ class CreatePostController extends GetxController {
     }
   }
 
-  /// Add a new variant tag (if not empty / duplicate).
   void addVariant(String v) {
     final t = v.trim();
     if (t.isNotEmpty && !variants.contains(t)) {
@@ -126,16 +185,23 @@ class CreatePostController extends GetxController {
     }
   }
 
-  /// Remove an existing variant tag.
   void removeVariant(String v) {
     variants.remove(v);
   }
 
-  // ── Submit Product ──────────────────────────────────────
+  // ---- Submit ----
 
   Future<void> submitProduct() async {
     if (isLoading.value) return;
     isLoading.value = true;
+
+    if (!_validateRequiredFields()) {
+      isLoading.value = false; // important to reset
+      return;
+    }
+
+    // Inform user about optional fields if they’re empty (non-blocking).
+    _notifyMissingOptionalFields();
 
     final token = await TokenStorage.getToken();
     if (token == null) {
@@ -146,45 +212,31 @@ class CreatePostController extends GetxController {
 
     try {
       final request = PostProductRequest(
-        categoryId:  selectedCategory.value,
+        categoryId: selectedCategory.value,
         productName: productName.value,
-        brand:       brand.value.isNotEmpty ? brand.value : '',
-        model:       model.value.isNotEmpty ? model.value : '',
-        price:       double.tryParse(price.value) ?? 0.0,
-        stock:       stock.value.isNotEmpty ? int.tryParse(stock.value) ?? 0 : 0,
+        brand: brand.value.isNotEmpty ? brand.value : '',
+        model: model.value.isNotEmpty ? model.value : '',
+        price: double.tryParse(price.value) ?? 0.0,
+        stock: stock.value.isNotEmpty ? int.tryParse(stock.value) ?? 0 : 0,
         description: description.value.isNotEmpty ? description.value : '',
-        colors:      selectedColors.isNotEmpty ? selectedColors.toList() : null,
-        variants:    variants.isNotEmpty ? variants.toList() : null,
-        imageFiles:  selectedImages
-            .where((f) => f != null)
-            .cast<File>()
-            .toList(),
+        colors: selectedColors.isNotEmpty ? selectedColors.toList() : null,
+        variants: variants.isNotEmpty ? variants.toList() : null,
+        imageFiles: selectedImages.toList(),
       );
 
+      final resp = await _authService.postProduct(token: token, requestModel: request);
 
-
-      final resp = await _authService.postProduct(
-        token: token,
-        requestModel: request,
-      );
-
-      if(resp.status == "success"){
-Get.snackbar("Upload Successfull", resp.message);
-Get.offAll(() => DashboardScreen());
-      }
-
-      else {
+      if (resp.status == "success") {
+        Get.snackbar("Upload Successful", resp.message);
+        Get.offAll(() => const DashboardScreen());
+      } else {
         Get.snackbar("Error", resp.message);
       }
-
-      Get.snackbar(
-        resp.status.capitalizeFirst ?? 'Status',
-        resp.message,
-      );
     } catch (e) {
       Get.snackbar("Upload Failed", e.toString());
     } finally {
       isLoading.value = false;
     }
   }
+
 }

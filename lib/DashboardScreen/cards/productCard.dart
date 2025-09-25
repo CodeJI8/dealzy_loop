@@ -52,7 +52,7 @@ Widget productCard(Map<String, dynamic> product) {
               Row(
                 children: [
                   Text(
-              '\$${product['price'] ?? '0'}',
+                    '£${product['price'] ?? '0'}',
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
@@ -60,17 +60,8 @@ Widget productCard(Map<String, dynamic> product) {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  const Icon(Icons.star, size: 16, color: Colors.orange),
-                  const SizedBox(width: 4),
-                  Text(
-                    rating != null
-                        ? rating.toStringAsFixed(1)
-                        : 'No rating',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Colors.black,
-                    ),
-                  ),
+
+
                 ],
               ),
 
@@ -85,7 +76,15 @@ Widget productCard(Map<String, dynamic> product) {
                       color: Colors.black,
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 4), // smaller spacing
+                  const Text(
+                    'at',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.black,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
                   Text(
                     time,
                     style: const TextStyle(
@@ -94,7 +93,8 @@ Widget productCard(Map<String, dynamic> product) {
                     ),
                   ),
                 ],
-              ),
+              )
+
             ],
           ),
         ),

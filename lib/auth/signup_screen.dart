@@ -1,57 +1,215 @@
 import 'dart:io';
-
-import 'package:image_picker/image_picker.dart';
-import 'package:seller_loop/auth/signin_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
-import 'package:get/get_core/src/get_main.dart';
-
-import '../service/seller_auth_service.dart';
+import 'package:seller_loop/auth/signin_screen.dart';
+import '../../service/seller_auth_service.dart';
+import '../widgets/card_shell.dart';
+import '../widgets/details_step1.dart';
+import '../widgets/phone_password_step.dart';
+import '../widgets/signup_intro.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
-
-
-
 
   @override
   State<SignUpScreen> createState() => _SignUpScreenState();
 }
 
 class _SignUpScreenState extends State<SignUpScreen> {
+  // controllers
   final phoneController = TextEditingController();
   final passwordController = TextEditingController();
   final confirmPasswordController = TextEditingController();
   final usernameController = TextEditingController();
+  final emailController = TextEditingController();
   final storeNameController = TextEditingController();
   final storeAddressController = TextEditingController();
+  final openingTimeController = TextEditingController(); // "hh:mm AM/PM"
+  final closingTimeController = TextEditingController(); // "hh:mm AM/PM"
+  final postalCodeController = TextEditingController();
+
+  // state
   String selectedStoreType = 'Retail';
   String profileImagePath = '';
+  bool _hidePassword = true;
+  bool _hideConfirmPassword = true;
+  int stepIndex = 0;
+  bool _isLoading = false;
+
 
   final SellerAuthService _authService = SellerAuthService();
-// magePicker
 
+  void nextStep() => setState(() => stepIndex = (stepIndex + 1).clamp(0, 3));
+  void previousStep() => setState(() => stepIndex = (stepIndex - 1).clamp(0, 3));
 
-  int stepIndex = 0;
-
-  void nextStep() {
-    setState(() {
-      if (stepIndex < 3) stepIndex++;
-    });
-  }
-
-  void previousStep() {
-    setState(() {
-      if (stepIndex > 0) stepIndex--;
-    });
+  @override
+  void dispose() {
+    phoneController.dispose();
+    passwordController.dispose();
+    confirmPasswordController.dispose();
+    usernameController.dispose();
+    storeNameController.dispose();
+    emailController.dispose();
+    storeAddressController.dispose();
+    openingTimeController.dispose();
+    closingTimeController.dispose();
+    postalCodeController.dispose();
+    super.dispose();
   }
 
   void goToSignIn() {
-    // Change this to navigate to your actual SignInScreen
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const SignInScreen()),
+    Navigator.push(context, MaterialPageRoute(builder: (_) => const SignInScreen()));
+  }
+
+  /// Parse "HH:MM" or "hh:mm AM/PM" into a TimeOfDay (24h internally).
+  TimeOfDay? _parseDisplay(String input) {
+    final s = input.trim().toUpperCase().replaceAll('.', '');
+    if (s.isEmpty) return null;
+
+    final r12 = RegExp(r'^(\d{1,2}):(\d{2})\s*(AM|PM)$');
+    final m12 = r12.firstMatch(s);
+    if (m12 != null) {
+      int h = int.parse(m12.group(1)!);
+      final m = int.parse(m12.group(2)!);
+      final period = m12.group(3)!;
+      if (h < 1 || h > 12 || m < 0 || m > 59) return null;
+      if (period == 'AM') {
+        if (h == 12) h = 0;
+      } else {
+        if (h != 12) h += 12;
+      }
+      return TimeOfDay(hour: h, minute: m);
+    }
+
+    final r24 = RegExp(r'^(\d{1,2}):(\d{2})$');
+    final m24 = r24.firstMatch(s);
+    if (m24 != null) {
+      final h = int.parse(m24.group(1)!);
+      final m = int.parse(m24.group(2)!);
+      if (h < 0 || h > 23 || m < 0 || m > 59) return null;
+      return TimeOfDay(hour: h, minute: m);
+    }
+    return null;
+  }
+
+  /// Convert display time to API "HH:mm:ss"
+  String? _buildTimeFromDisplay(String display) {
+    if (display.trim().isEmpty) return null;
+    final t = _parseDisplay(display);
+    if (t == null) throw 'Please use HH:MM or hh:mm AM/PM';
+    final hh = t.hour.toString().padLeft(2, '0');
+    final mm = t.minute.toString().padLeft(2, '0');
+    return '$hh:$mm:00';
+  }
+
+  String _formatTime12(TimeOfDay t) {
+    final h12 = (t.hourOfPeriod == 0 ? 12 : t.hourOfPeriod).toString().padLeft(2, '0');
+    final mm = t.minute.toString().padLeft(2, '0');
+    final period = t.period == DayPeriod.am ? 'AM' : 'PM';
+    return '$h12:$mm $period';
+  }
+
+  Future<void> _pickTime({required bool isOpening}) async {
+    final current = isOpening ? openingTimeController.text : closingTimeController.text;
+    TimeOfDay initial = _parseDisplay(current) ?? TimeOfDay.now();
+
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: initial,
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: false),
+          child: child!,
+        );
+      },
     );
+
+    if (picked != null) {
+      final formatted12 = _formatTime12(picked);
+      if (isOpening) {
+        openingTimeController.text = formatted12;
+      } else {
+        closingTimeController.text = formatted12;
+      }
+      setState(() {});
+    }
+  }
+
+  Future<void> _submitDetailsStep() async {
+    if (profileImagePath.isEmpty) {
+      Get.snackbar('Error', 'Please select a profile image');
+      return;
+    }
+
+    final postalRaw = postalCodeController.text.trim();
+    if (postalRaw.isEmpty) {
+      Get.snackbar('Missing field', 'Postal code is required');
+      return;
+    }
+
+    // Basic UK postcode validation (accepts common formats like SW1A 1AA, W1D 3QF)
+    final ukPostcodeRegex = RegExp(r'^[A-Za-z]{1,2}\d[A-Za-z\d]?\s?\d[A-Za-z]{2}$');
+    if (!ukPostcodeRegex.hasMatch(postalRaw)) {
+      Get.snackbar('Invalid postal code', 'Please enter a valid UK postcode (e.g., SW1A 1AA)');
+      return;
+    }
+
+    // Normalize to uppercase and single space before sending (optional but tidy)
+    final postal = postalRaw.toUpperCase().replaceAll(RegExp(r'\s+'), ' ');
+
+    String? openingTime;
+    String? closingTime;
+    try {
+      openingTime = _buildTimeFromDisplay(openingTimeController.text);
+      closingTime = _buildTimeFromDisplay(closingTimeController.text);
+    } catch (e) {
+      Get.snackbar('Invalid time', e.toString());
+      return;
+    }
+    setState(() => _isLoading = true);
+    try {
+      final response = await _authService.registerSeller(
+        name: usernameController.text.trim(),
+        phone: phoneController.text.trim(),
+        password: passwordController.text,
+        storeName: storeNameController.text.trim(),
+        storeType: selectedStoreType,
+        email: emailController.text.trim(),
+        address: storeAddressController.text.trim(),
+        imagePath: profileImagePath,
+        openingTime: openingTime,
+        closingTime: closingTime,
+        postalCode: postal,
+      );
+
+      // ---- Map backend postcode failure to a friendly snackbar ----
+      final status = (response['status'] ?? '').toString().toLowerCase();
+      final message = (response['message'] ?? '').toString();
+
+      if (status != 'success') {
+        if (message.toLowerCase().contains('cannot fetch postcode api')) {
+          Get.snackbar('Invalid postal code', 'Please enter a valid UK postcode');
+          return;
+        }
+        Get.snackbar('Failed', message.isNotEmpty ? message : 'Unknown error');
+        return;
+      }
+      // -------------------------------------------------------------
+
+      Get.snackbar('Success', 'Registration successful');
+      Get.off(() => const SignInScreen());
+    } catch (e) {
+      // If your backend sometimes throws this exact message via non-200 paths, catch & map it here too.
+      final msg = e.toString().toLowerCase();
+      if (msg.contains('cannot fetch postcode api')) {
+        Get.snackbar('Invalid postal code', 'Please enter a valid UK postcode');
+        return;
+      }
+      Get.snackbar('Error', e.toString());
+    } finally {
+      setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -65,10 +223,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
         return true;
       },
       child: Scaffold(
+        resizeToAvoidBottomInset: true,
         backgroundColor: const Color(0xFF004D99),
-        appBar: stepIndex == 0
-            ? null
-            : AppBar(
+        appBar:  AppBar(
           backgroundColor: const Color(0xFF004D99),
           elevation: 0,
           leading: IconButton(
@@ -78,503 +235,126 @@ class _SignUpScreenState extends State<SignUpScreen> {
         ),
         body: LayoutBuilder(
           builder: (context, constraints) {
-            return SingleChildScrollView(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                child: IntrinsicHeight(
-                  child: SafeArea( // 👈 avoids status bar overlap
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.center,
+            final kb = MediaQuery.of(context).viewInsets.bottom;
+            const double baseTop = 140.0;
+            const double minTop = 24.0;
+            final double maxShift = baseTop - minTop;
+            final double shiftUp = kb.clamp(0.0, maxShift);
+
+            return SafeArea(
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  if (stepIndex == 2 || stepIndex == 1) ...[
+                    // --- For DetailsStep1: Logo overlaps the card ---
+                    Column(
                       children: [
-
-                        Image.asset('assets/ic_shopcenter.png', width: 200 ,
-
-                        fit: BoxFit.cover,),
-
-
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 10),
-                          child: Container(
-                            padding: const EdgeInsets.all(15),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
+                        Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            // Card pushed down a bit
+                            Container(
+                              margin: const EdgeInsets.only(top: 40, left: 10, right: 10), // 👈 add side margin
+                              child: CardShell(
+                                maxHeight: constraints.maxHeight - 100,
+                                child: _buildStepView(),
+                              ),
                             ),
-                            child: buildStepView(),
-                          ),
+
+                            // Logo overlaps top of the card
+                            Positioned(
+                              top: -50,
+                              left: 0,
+                              right: 0,
+                              child: Center(
+                                child: Image.asset(
+                                  'assets/ic_shopcenter.png',
+                                  width: 140,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        const Spacer(),
                       ],
                     ),
-                  ),
-                ),
-              ),
+                  ]
+                  else ...[
+                    // --- Default flow for step 0 & 1 ---
+                    Align(
+                      alignment: Alignment.topCenter,
+                      child: AnimatedScale(
+                        scale: kb > 0 ? 0.9 : 1.0,
+                        duration: const Duration(milliseconds: 180),
+                        child: Image.asset(
+                          'assets/ic_shopcenter.png',
+                          width: 200,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      top: baseTop,
+                      left: 10,
+                      right: 10,
+                      child: Transform.translate(
+                        offset: Offset(0, -shiftUp),
+                        child: CardShell(
+                          maxHeight: constraints.maxHeight - (baseTop - shiftUp) - 24,
+                          child: _buildStepView(),
+                        ),
+                      ),
+                    ),
+                  ]
+                ],
+              )
+              ,
             );
           },
         ),
-
-
       ),
     );
   }
 
-  Widget buildStepView() {
+  Widget _buildStepView() {
     switch (stepIndex) {
-    case 0:
-      return buildIntro();
+      case 0:
+        return SignUpIntro(
+          onSignUpTap: nextStep,
+          onLoginTap: goToSignIn,
+        );
       case 1:
-        return buildPhonePassword();
+        return PhonePasswordStep(
+          phoneController: phoneController,
+          passwordController: passwordController,
+          confirmPasswordController: confirmPasswordController,
+          openingTimeController: openingTimeController,
+          closingTimeController: closingTimeController,
+          hidePassword: _hidePassword,
+          hideConfirmPassword: _hideConfirmPassword,
+          onToggleHidePassword: () => setState(() => _hidePassword = !_hidePassword),
+          onToggleHideConfirmPassword: () => setState(() => _hideConfirmPassword = !_hideConfirmPassword),
+          onPickOpeningTime: () => _pickTime(isOpening: true),
+          onPickClosingTime: () => _pickTime(isOpening: false),
+          onConfirm: nextStep,
+          onGoToLogin: goToSignIn,
+        );
       case 2:
-        return buildDetailsStep1();
-      // case 3:
-        // return buildDetailsStep2();
+        return DetailsStep1(
+          profileImagePath: profileImagePath,
+          onPickImage: (path) => setState(() => profileImagePath = path),
+          usernameController: usernameController,
+          emailController: emailController,
+          storeNameController: storeNameController,
+          storeAddressController: storeAddressController,
+          postalCodeController: postalCodeController,
+          selectedStoreType: selectedStoreType,
+          onStoreTypeChanged: (v) => setState(() => selectedStoreType = v),
+          onSubmit: _submitDetailsStep,
+          isLoading: _isLoading,
+        );
       default:
-        return Container();
+        return const SizedBox.shrink();
     }
   }
-
-  Widget buildIntro() {
-    return Container(
-
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Image.asset('assets/discount_icon.png', height: 80),
-              const SizedBox(height: 16),
-              const Text(
-                "LocalLoop helps you save money by showing real-time deals from nearby local shops on expiring, overstocked, and discounted items — reducing food waste while supporting your community.",
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: nextStep,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF0C3D78),
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size.fromHeight(45),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text("Sign Up"),
-                      SizedBox(width: 6),
-                      Icon(Icons.arrow_forward),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: goToSignIn,
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(45),
-                    foregroundColor: const Color(0xFF0C3D78),
-                    side: const BorderSide(color: Color(0xFFCCCCCC)),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text("Log In"),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-
-  Widget buildPhonePassword() {
-    return Column(
-      children: [
-        const SizedBox(height: 16),
-        const Text(
-          "Get exclusive local deals before they're gone.\nSign up now!",
-          textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-
-        // White Box + Characters in Stack
-        Stack(
-          clipBehavior: Clip.none,
-          children: [
-            // White Container
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-              child: Column(
-                children: [
-                   TextField(
-                     controller: phoneController,
-                    style: TextStyle(fontSize: 14),
-                    decoration: InputDecoration(
-                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      labelText: 'Enter your phone number',
-                      labelStyle: TextStyle(fontSize: 14),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(20)),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(20)),
-                        borderSide: BorderSide(color: Colors.grey),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(20)),
-                        borderSide: BorderSide(color: Colors.blue),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                   TextField(
-                     controller: passwordController,
-                    obscureText: true,
-                    style: TextStyle(fontSize: 14),
-                    decoration: InputDecoration(
-                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      labelText: 'Create a password',
-                      labelStyle: TextStyle(fontSize: 14),
-                      suffixIcon: Icon(Icons.visibility_off),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(20)),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(20)),
-                        borderSide: BorderSide(color: Colors.grey),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(20)),
-                        borderSide: BorderSide(color: Colors.blue),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                   TextField(
-                    controller: confirmPasswordController,
-                    obscureText: true,
-                    style: TextStyle(fontSize: 14),
-                    decoration: InputDecoration(
-                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      labelText: 'Confirm password',
-                      labelStyle: TextStyle(fontSize: 14),
-                      suffixIcon: Icon(Icons.visibility_off),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(20)),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(20)),
-                        borderSide: BorderSide(color: Colors.grey),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.all(Radius.circular(20)),
-                        borderSide: BorderSide(color: Colors.blue),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Center(
-
-                      child: ElevatedButton(
-                        onPressed: () {
-                          final phone = phoneController.text.trim();
-                          final password = passwordController.text;
-                          final confirmPassword = confirmPasswordController.text;
-
-                          if (phone.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
-                            Get.snackbar('Missing Fields', 'Please fill all fields');
-                            return;
-                          }
-
-                          if (password != confirmPassword) {
-                            Get.snackbar('Password Mismatch', 'Passwords do not match');
-                            return;
-                          }
-
-                          // ✅ Validation passed: print values
-                          print('Phone: $phone');
-                          print('Password: $password');
-                          print('Confirm Password: $confirmPassword');
-
-                          nextStep();
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF0C3D78),
-                          foregroundColor: Colors.white,
-                          minimumSize: const Size.fromHeight(40.5), // responsive height
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(9),
-                          ),
-                        ),
-                        child: const Text(
-                          'Confirm',
-                          style: TextStyle(fontSize: 12.6),
-                        ),
-                      ),
-                  ),
-                  const SizedBox(height: 50), // leave space for characters
-                  const Text(
-                    'If you have an account, just ',
-                    style: TextStyle(color: Colors.black),
-                  ),
-                  GestureDetector(
-                    onTap: goToSignIn,
-                    child: const Text(
-                      'Sign in now!',
-                      style: TextStyle(
-                        color: Color(0xFF0C3D78),
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Left character - overlapping outside
-            Positioned(
-              left: -20,
-              bottom: -40,
-              child: Image.asset(
-                'assets/left_character.png',
-                width: 120,
-                height: 180,
-              ),
-            ),
-
-            // Right character - overlapping outside
-            Positioned(
-              right: -20,
-              bottom: -40,
-              child: Image.asset(
-                'assets/right_character.png',
-                width: 120,
-                height: 180,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-
-  Widget buildDetailsStep1() {
-    return Column(
-      children: [
-        // Profile Picture with "Add Image" icon
-        Stack(
-          alignment: Alignment.center,
-          children: [
-            CircleAvatar(
-              radius: 40,
-              backgroundColor: Colors.grey[300],
-              backgroundImage: profileImagePath.isNotEmpty
-                  ? FileImage(File(profileImagePath))
-                  : null,
-              child: profileImagePath.isEmpty
-                  ? Icon(Icons.person, size: 40, color: Colors.grey[600])
-                  : null,
-            ),
-
-            Positioned(
-              bottom: 0,
-              right: 4,
-              child: InkWell(
-                onTap: () async {
-                  final picker = ImagePicker();
-                  final picked = await picker.pickImage(source: ImageSource.gallery);
-                  if (picked != null) {
-                    setState(() {
-                      profileImagePath = picked.path;
-                    });
-                  }
-                },
-
-                child: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.blue,
-                  ),
-                  child: const Icon(Icons.camera_alt, color: Colors.white, size: 18),
-                ),
-              ),
-            ),
-          ],
-        ),
-
-        const SizedBox(height: 20),
-
-        // Username
-        TextField(
-          controller: usernameController,
-          style: const TextStyle(fontSize: 14),
-          decoration: const InputDecoration(
-            labelText: 'Username',
-            labelStyle: TextStyle(fontSize: 14),
-            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.all(Radius.circular(20)),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.all(Radius.circular(20)),
-              borderSide: BorderSide(color: Colors.grey),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.all(Radius.circular(20)),
-              borderSide: BorderSide(color: Colors.blue),
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-
-
-
-        // Store name
-         TextField(
-           controller: storeNameController,
-          style: TextStyle(fontSize: 14),
-          decoration: InputDecoration(
-            labelText: 'Store name',
-            labelStyle: TextStyle(fontSize: 14),
-            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.all(Radius.circular(20)),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.all(Radius.circular(20)),
-              borderSide: BorderSide(color: Colors.grey),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.all(Radius.circular(20)),
-              borderSide: BorderSide(color: Colors.blue),
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-
-        // Store address
-         TextField(
-           controller: storeAddressController,
-          style: TextStyle(fontSize: 14),
-          decoration: InputDecoration(
-            labelText: 'Store address',
-            labelStyle: TextStyle(fontSize: 14),
-            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.all(Radius.circular(20)),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.all(Radius.circular(20)),
-              borderSide: BorderSide(color: Colors.grey),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.all(Radius.circular(20)),
-              borderSide: BorderSide(color: Colors.blue),
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-
-        // Store type dropdown
-        DropdownButtonFormField<String>(
-          value: selectedStoreType,
-          decoration: const InputDecoration(
-            labelText: 'Store type',
-            labelStyle: TextStyle(fontSize: 14),
-            contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.all(Radius.circular(20)),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.all(Radius.circular(20)),
-              borderSide: BorderSide(color: Colors.grey),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.all(Radius.circular(20)),
-              borderSide: BorderSide(color: Colors.blue),
-            ),
-          ),
-          items: ['Retail', 'Wholesale', 'Service']
-              .map((e) => DropdownMenuItem<String>(
-            value: e,
-            child: Text(e),
-          ))
-              .toList(),
-          onChanged: (value) {
-            if (value != null) {
-              setState(() {
-                selectedStoreType = value;
-              });
-            }
-          },
-        ),
-
-
-        const SizedBox(height: 24),
-
-        // Confirm Button
-        Center(
-          child: ElevatedButton(
-            onPressed: () async {
-              if (profileImagePath.isEmpty) {
-                Get.snackbar('Error', 'Please select a profile image');
-                return;
-              }
-
-              try {
-                final response = await _authService.registerSeller(
-                  name: usernameController.text.trim(),
-                  phone: phoneController.text.trim(),
-                  password: passwordController.text,
-                  storeName: storeNameController.text.trim(),
-                  storeType: selectedStoreType,
-                  address: storeAddressController.text.trim(),
-                  imagePath: profileImagePath,
-                );
-
-                if (response['status'] == 'success') {
-                  Get.snackbar('Success', 'Registration successful');
-                  Get.off(() => const SignInScreen());
-                } else {
-                  Get.snackbar('Failed', response['message'] ?? 'Unknown error');
-                }
-              } catch (e) {
-                Get.snackbar('Error', e.toString());
-              }
-            },
-
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0C3D78),
-              foregroundColor: Colors.white,
-              minimumSize: const Size(180, 45),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: const Text('Confirm'),
-          ),
-
-        ),
-      ],
-    );
-  }
-
-
-
 }

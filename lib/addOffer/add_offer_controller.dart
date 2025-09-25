@@ -3,13 +3,16 @@ import '../service/seller_auth_service.dart';
 import '../storage/token_storage.dart';
 
 class AddOfferController extends GetxController {
-  final SellerAuthService _authService = SellerAuthService();
+  AddOfferController({SellerAuthService? authService})
+      : _authService = authService ?? SellerAuthService();
+
+  final SellerAuthService _authService;
 
   Future<void> addOffer({
     required String productId,
     required String discount,
-    required String offerCategory,
-    String? expiryDate, // only required for 'regular'
+    required String offerCategory, // 'regular' | 'expiring_soon' | 'clearance'
+    String? expiryDate,            // only for non-regular
   }) async {
     final token = await TokenStorage.getToken();
     if (token == null) {
@@ -18,7 +21,7 @@ class AddOfferController extends GetxController {
     }
 
     try {
-      final response = await _authService.addOffer(
+      final res = await _authService.addOffer(
         token: token,
         productId: productId,
         discount: discount,
@@ -26,10 +29,10 @@ class AddOfferController extends GetxController {
         expiryDate: expiryDate,
       );
 
-      if (response['status'] == 'success') {
-        Get.snackbar("Success", response['message'] ?? "Offer added successfully");
+      if (res['status'] == 'success') {
+        Get.snackbar("Success", res['message'] ?? "Offer added successfully");
       } else {
-        Get.snackbar("Failed", response['message'] ?? "Something went wrong");
+        Get.snackbar("Failed", res['message'] ?? "Something went wrong");
       }
     } catch (e) {
       Get.snackbar("Error", e.toString());

@@ -1,121 +1,112 @@
-import 'package:flutter/cupertino.dart';
+// lib/dashboard/cards/dealCard.dart
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import 'package:get/get.dart';
-
-import '../../service/seller_auth_service.dart';
-import '../../storage/token_storage.dart';
-
-
-Widget dealCard(Map<String, dynamic> deal) {
-  // parse & format expiry date
+Widget dealCard(
+    Map<String, dynamic> deal, {
+      VoidCallback? onDelete,   // delete callback
+      VoidCallback? onTap,      // open details callback
+    }) {
   final expiry = DateTime.tryParse(deal['expiry_date'] ?? '');
   final formattedExpiry = expiry != null
       ? DateFormat('MMM d, yyyy').format(expiry)
-      : deal['expiry_date'] ?? '';
+      : null; // null means no valid date
 
-  return ListTile(
-    contentPadding: EdgeInsets.zero,
-    leading: ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: Image.network(
-        deal['product_image'] ?? '',
-        width: 40,
-        height: 40,
-        fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) =>
-            Image.asset('assets/watch1.png', width: 40, height: 40, fit: BoxFit.cover),
-      ),
-    ),
-    title: Text(
-      // truncate long names
-      '${deal['product_name'] ?? 'No name'}',
-      overflow: TextOverflow.ellipsis,
-      style: const TextStyle(
-        fontSize: 14,
-        fontWeight: FontWeight.bold,
-        color: Colors.black,
-      ),
-    ),
-    subtitle: Text(
-      'Exp $formattedExpiry',
-      style: const TextStyle(
-        fontSize: 12,
-        color: Colors.black,
-      ),
-    ),
-    trailing: Row(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        // original & discounted prices
-        Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              '\$${deal['price'] ?? ''}',
-              style: const TextStyle(
-                decoration: TextDecoration.lineThrough,
-                color: Colors.grey,
-                fontSize: 12,
-              ),
+  final productName = (deal['product_name'] ?? 'No name').toString();
+
+  // numeric parsing with safety
+  final originalPrice = (deal['price'] is num)
+      ? (deal['price'] as num).toDouble()
+      : double.tryParse('${deal['price']}');
+  final discountPrice = (deal['discount_price'] is num)
+      ? (deal['discount_price'] as num).toDouble()
+      : double.tryParse('${deal['discount_price']}');
+
+  return InkWell(
+    onTap: onTap, // 👈 tap anywhere on card to open details
+    borderRadius: BorderRadius.circular(8),
+    child: Container(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          // thumbnail
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.network(
+              deal['product_image'] ?? '',
+              width: 40,
+              height: 40,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) =>
+                  Image.asset('assets/watch1.png', width: 40, height: 40, fit: BoxFit.cover),
             ),
-            Text(
-              // round to 2 decimals
-              '\$${(deal['discount_price'] as num).toStringAsFixed(2)}',
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                color: Colors.red,
-              ),
+          ),
+          const SizedBox(width: 10),
+
+          // title + expiry
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  productName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  formattedExpiry != null
+                      ? 'Exp $formattedExpiry'
+                      : 'No expiry date',
+                  style: const TextStyle(fontSize: 12, color: Colors.black),
+                ),
+              ],
             ),
-          ],
-        ),
-        // little spacing
-        const SizedBox(width: 8),
-        // close icon
-        IconButton(
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(),
-          icon: const Icon(Icons.close, size: 20, color: Colors.black54),
-          onPressed: () async {
-            // 1️⃣ Get the token
-            final token = await TokenStorage.getToken();
-            if (token == null) {
-              Get.snackbar('Error', 'Please login first');
-              return;
-            }
+          ),
 
-            // 2️⃣ Call the delete API
-            try {
-              final response = await SellerAuthService().deleteItem(
-                token: token,
-                productId: deal['id'].toString(),
-                item: 'offers',
-              );
+          // price block
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              if (originalPrice != null)
+                Text(
+                  '\£${originalPrice.toStringAsFixed(2)}',
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              if (discountPrice != null)
+                Text(
+                  '\£${discountPrice.toStringAsFixed(2)}',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red,
+                  ),
+                ),
+            ],
+          ),
 
-              // 3️⃣ Handle the response
-              if (response['status'] == 'success') {
-                Get.snackbar('Deleted', response['message'] ?? 'Deal removed');
-                // 4️⃣ Remove from your local list and refresh the UI.
-                //    If you manage deals in a parent StatefulWidget:
-                //    setState(() {
-                //      _deals.removeWhere((d) => d['id'] == deal['id']);
-                //    });
-                //    Or, if you use a GetxController:
-                //    yourController.deals.removeWhere((d) => d['id'] == deal['id']);
-              } else {
-                throw Exception(response['message']);
-              }
-            } catch (e) {
-              Get.snackbar('Error', e.toString());
-            }
-          },
-        ),
+          const SizedBox(width: 8),
 
-      ],
+          // delete button (doesn't trigger onTap)
+          IconButton(
+            visualDensity: const VisualDensity(horizontal: -2, vertical: -2),
+            icon: const Icon(Icons.close, color: Colors.red),
+            onPressed: onDelete,
+            tooltip: 'Remove this deal',
+          ),
+        ],
+      ),
     ),
   );
 }
