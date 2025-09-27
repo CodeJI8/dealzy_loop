@@ -20,4 +20,6 @@ class AppRoutes {
   static const verify = '/verify';
   static const otpVerification = '/otp-verification';
   static const updatePassword = '/update-password';
+  static const String privacyPolicy = '/privacy-policy';
+  static const String aboutApp = '/about-app';
 }

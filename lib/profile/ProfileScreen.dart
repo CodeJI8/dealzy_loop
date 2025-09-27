@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../auth/signin_screen.dart';
+import '../routes/app_routes.dart';
 import '../storage/token_storage.dart';
 import 'ProfileController.dart';
 import 'models/SellerProfile.dart';
@@ -114,8 +115,38 @@ class ProfileScreen extends GetView<ProfileController> {
                   ],
                 ),
             
-                SizedBox(height: 70.h),
-            
+                SizedBox(height: 50.h),
+
+
+        // LEGAL SECTION
+                Row(
+                  children: const [
+                    Text('Legal', style: TextStyle(fontWeight: FontWeight.w800)),
+                  ],
+                ),
+                const SizedBox(height: 8),
+
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.privacy_tip_outlined),
+                  title: const Text('Privacy Policy', style: TextStyle(fontWeight: FontWeight.w600)),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.pushNamed(context, AppRoutes.privacyPolicy);
+                  },
+                ),
+
+                const SizedBox(height: 8),
+
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.info_outline),
+                  title: const Text('About App', style: TextStyle(fontWeight: FontWeight.w600)),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.pushNamed(context, AppRoutes.aboutApp);
+                  },
+                ),
                 // ─── Log Out ───────────────────────────────────────
                 GestureDetector(
                   onTap: _confirmLogout,

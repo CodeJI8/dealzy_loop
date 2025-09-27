@@ -10,6 +10,8 @@ import 'package:seller_loop/update_password/update_password_view.dart';
 import 'app_start_gate.dart';
 import 'forget_password/forget_password_controller.dart';
 import 'forget_password/forget_password_view.dart';
+import 'metaData/AboutAppPage.dart';
+import 'metaData/PrivacyPolicyWebView.dart';
 import 'otp/otp_verification_controller.dart';
 import 'otp/otp_verification_view.dart';
 import 'routes/app_routes.dart';
@@ -51,7 +53,8 @@ class MyApp extends StatelessWidget {
             GetPage(name: AppRoutes.addOffer, page: () => AddOfferScreen()),
             GetPage(name: AppRoutes.signIn, page: () => const SignInScreen()),
             GetPage(name: AppRoutes.signup, page: () => const SignUpScreen()),
-
+            GetPage(name: AppRoutes.privacyPolicy, page: () => const PrivacyPolicyWebView()),
+            GetPage(name: AppRoutes.aboutApp, page: () => const AboutAppPage()),
             GetPage(name: AppRoutes.createPost, page: () => const CreatePostScreen()),
             GetPage(name: AppRoutes.dashboard, page: () => const DashboardScreen()),
             GetPage(
